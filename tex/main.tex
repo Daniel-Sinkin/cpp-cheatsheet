@@ -1154,6 +1154,70 @@ any subarray sum can be computed in constant time via
 \sum_{j=i}^{k} x_j = S(k) - S(i-1).
 \]
 \subsection{Problems}
+\subsubsection{Lazy Deletion Stack}
+This uses the Lazy Delete / Tombstone pattern to allow efficiently deleting large parts of a stack to implement \texttt{remove\_lower} and \texttt{remove\_upper}, which cut out (potentially) large parts of the stack. Aside from tombstoning a \texttt{std::map} is used (as opposed to \texttt{std::unordered\_map}) to avoid having to do a linear sweep over the whole stack when deleting objects.
+
+\begin{lstlisting}
+class LazyDeleteStack {
+public:
+    auto push(int value) -> void {
+        const usize idx = data_.size();
+        data_.push_back({value, false});
+        value_to_idx_[value].push_back(idx);
+    }
+
+    auto pop() -> void {
+        while (!data_.empty()) {
+            const auto top = data_.back();
+
+            const auto entry = data_.back();
+            data_.pop_back();
+            value_to_idx_[entry.value].pop_back();
+
+            if (!top.is_removed) {
+                // break on first alive object deleted
+                break;
+            }
+        }
+    }
+
+    auto remove_lower(int value) -> void {
+        auto it = value_to_idx_.begin();
+        const auto end = value_to_idx_.lower_bound(value);
+        while (it != end) {
+            for (auto idx : it->second) {
+                data_[idx].is_removed = true;
+            }
+            ++it;
+        }
+    }
+
+    auto remove_upper(int value) -> void {
+        auto it = value_to_idx_.upper_bound(value);
+        while (it != value_to_idx_.end()) {
+            for (auto &idx : it->second) {
+                std::println("remove_upper inner");
+                data_[idx].is_removed = true;
+            }
+            ++it;
+        }
+    }
+
+    auto print() const -> void {
+        for (auto i = data_.size(); i-- > 0;) {
+            const auto entry = data_[i];
+            if (!entry.is_removed) {
+                std::println("<{:3}>", entry.value);
+            }
+        }
+    }
+
+private:
+    std::vector<StackEntry> data_{};
+    std::map<int, std::vector<usize>> value_to_idx_{};
+};
+\end{lstlisting}
+
 \subsubsection{Subarrays with Given Sum and Bounded Maximum}
 Suppose we are given an array \texttt{nums} with \texttt{n} elements and we are interested in counting the number of contiguous subarrays which sum to some \texttt{k} and whose elements are at most \texttt{M}.
 
