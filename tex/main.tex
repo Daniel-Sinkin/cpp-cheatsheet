@@ -439,22 +439,6 @@ Finishing Program
 
 \texttt{scoped\_lock} and (the now outdated \texttt{lock\_guard}) are examples of RAII wrappers for mutexes, \texttt{std::vector} is a RAII wrapper around dynamic memory.
 
-RAII wrappers can also be useful when trying to do some post-scope cleanup or operation, as a type of soft `texttt{defer}`.  For example I use 
-\begin{lstlisting}
-using Clock = std::chrono::steady_clock;
-using TimePoint = Clock::time_point;
-using Duration = std::chrono::duration<f64>;
-
-ScopeTimer::ScopeTimer(std::string_view label) noexcept : label_(label), start_(Clock::now()) {}
-ScopeTimer::~ScopeTimer() noexcept
-{
-    const auto dt = Clock::now() - start_;
-    const auto seconds = std::chrono::duration<f64>(dt).count();
-    std::println("{}: {:.3f} ms", label_, seconds * 1000.0);
-}
-\end{lstlisting}
-to quickly time scopes (for example actual scoped or function invocations).
-
 \subsection{NRVO (Named Return Value Optimisation)}
 To show that NRVO happens we construct a simple tracker class which prints out whenever a copy / move / normal construction happens.
 \begin{lstlisting}
@@ -534,6 +518,69 @@ static_assert(alignof(EmptyAligned) == 16);
 static_assert(sizeof(NoEBO) == 32);
 static_assert(sizeof(WithEBO) == 16);
 \end{lstlisting}
+
+\subsection{Idioms and Patterns}
+\subsubsection{Lazy Delete Idiom / Tombstoning}
+When you want to delete an object in the middle (or beginning) of a vector you first have to push that element to the end and shift everything to the left by 1 and then pop_back, this can be very expensive, especially if many objects have to be deleted.
+
+A common trick to avoid this is to keep a list of tombstones which are boolean values denoting if that value is deleted, and when you access or iterate you simply skip those elements.
+
+If you occassionally pop elements off the back it can be advantageous to just keep popping as long as there are tombstone objects on the top, or if you have downtime in your program you could do cleanup (batching the removal is much faster) or just keep the tombstoned values if the memory cost is not too high.
+\begin{lstlisting}
+struct DeleteableInt{
+    int value{};
+    bool is_deleted{false};
+};
+
+std::vector<DeletableInt> vec{};
+vec.resize(100);
+for(auto i = 0; i < vec.size(); ++i) {
+    if(i & 1 == 0) {
+        vec[i].is_deleted = true;
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Scope Guard / Defer Pattern}
+RAII wrappers can also be useful when trying to do some post-scope cleanup or operation, as a type of soft `texttt{defer}`.  For example I use 
+\begin{lstlisting}
+using Clock = std::chrono::steady_clock;
+using TimePoint = Clock::time_point;
+using Duration = std::chrono::duration<f64>;
+
+ScopeTimer::ScopeTimer(std::string_view label) noexcept : label_(label), start_(Clock::now()) {}
+ScopeTimer::~ScopeTimer() noexcept
+{
+    const auto dt = Clock::now() - start_;
+    const auto seconds = std::chrono::duration<f64>(dt).count();
+    std::println("{}: {:.3f} ms", label_, seconds * 1000.0);
+}
+\end{lstlisting}
+to quickly time scopes (for example actual scoped or function invocations).
+
+\subsubsection{Unsigned reverse iteration idiom (\texttt{i-- > 0})}
+When iterating backwards with an unsigned index (e.g. \texttt{std::size\_t}),
+\texttt{i >= 0} is always true, and \texttt{i--} can underflow.
+The idiom
+\[
+\texttt{for (auto i = n; i-- > 0;)}
+\]
+means: compare the current value to 0, then decrement, but the loop body sees
+the decremented value, running for indices \texttt{n-1, ..., 0}.
+
+\begin{lstlisting}[language=cpp,caption={Reverse loop for unsigned indices (safe)}]
+for (std::size_t i = v.size(); i-- > 0; )
+{
+    use(v[i]);
+}
+\end{lstlisting}
+
+The range (C++20) based alternative to this is to use
+\begin{lstlisting}
+\texttt{for (auto\& x : std::views::reverse(v)) \{...\}}
+\end{lstlisting}
+
+
 \subsection{SIOF (Static Initialisation Order Fiasco)}
 \subsection{Important STL algorithms}
 \subsection{Templates}
@@ -596,6 +643,23 @@ static_assert(sizeof(WithEBO) == 16);
 
     \caption{Bidirectional and stronger iterator categories}
 \end{figure}
+
+\subsection{Ranges}
+First introduced in C++20, base don Eric Niebler's \texttt{Range-v3} library.
+\subsubsection{Core Concepts}
+\subsubsection{Views}
+\texttt{std::ranges::filter}, \texttt{std::ranges::take}, \texttt{std::ranges::reverse}
+
+For example the Unsigned reverse iteration idiom (\texttt{i-- > 0}) can be implemented using ranges instead:
+
+\begin{lstlisting}
+\texttt{for (auto\& x : std::views::reverse(v)) \{...\}}
+\end{lstlisting}
+
+\subsubsection{Range Algorithms}
+\texttt{std::ranges::sort}, \texttt{std::ranges::find}, \texttt{std::ranges::copy}
+\subsubsection{Range Concepts}
+
 
 \subsection{Containers}
 \subsection{Algorithms}
@@ -1046,7 +1110,7 @@ Thus the identity holds for \( k+1 \), and therefore for all \( k \in \mathbb{N}
  = \frac{\operatorname{avg}(2)\cdot 2 + a_3}{3}.
 \end{align*}
 
-\subsection{Prefix Sums}
+\subsubsection{Prefix Sums}
 \[
 S(k)
 := \sum_{i=1}^{k} x_i,
