@@ -521,7 +521,7 @@ static_assert(sizeof(WithEBO) == 16);
 
 \subsection{Idioms and Patterns}
 \subsubsection{Lazy Delete Idiom / Tombstoning}
-When you want to delete an object in the middle (or beginning) of a vector you first have to push that element to the end and shift everything to the left by 1 and then pop_back, this can be very expensive, especially if many objects have to be deleted.
+When you want to delete an object in the middle (or beginning) of a vector you first have to push that element to the end and shift everything to the left by 1 and then \texttt{pop\_back}, this can be very expensive, especially if many objects have to be deleted.
 
 A common trick to avoid this is to keep a list of tombstones which are boolean values denoting if that value is deleted, and when you access or iterate you simply skip those elements.
 
@@ -1296,6 +1296,14 @@ In C++ this can be implemented efficiently (no runtime overhead) by using \textt
 \newpage
 \section{Computer Architecture,\\HPC (High Performanc Computing)}
 \subsection{Memory Hierarchy and Cache}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.95\linewidth]{cache_hierarchy.png}\\[0.3em]
+    \caption{CPU cache hierarchy (registers, L1/L2/L3, main memory)}
+    \label{fig:cache-hierarchy}
+\end{figure}
+
 \subsubsection{Cache Lines and Cache Locality}
 A \texttt{Word} is the width of a standard register, on modern machines this is usually \texttt{8 Byte}. The architecture defines the size of a pointer, usually it's either \texttt{4 Byte} (on 32 bit architecture) or \texttt{8 Byte} (on 64 bit architecture). A \texttt{Cache Line} is the smallest contiguous chunk of memory that the CPU can load at once. Usually it's the size of \texttt{8 Word}. We will assume that 
 \[
@@ -1303,12 +1311,60 @@ A \texttt{Word} is the width of a standard register, on modern machines this is 
 \]
 
 \subsubsection{Spatial vs Temporal Locality}
+Spatial Locality means that if you access some element then you probably will access nearby elements as well, this is referred to as spatial locality. For example if you pull a variable into cache on a cache miss you pull in an entire cacheline, if you iterate through a large number of elements sequentially (potentially strided) the CPU will see this and pre-fetch memory to be used when it's needed (pipelining).
+\begin{lstlisting}
+for(auto i = 0zu; i < vec.size(); ++i) {
+    // vec[i + 1] is already ready to be processed before this operation is done
+    vec[i] += 1;
+}
+\end{lstlisting}
+
+Temporal Locality means that if you access some element then you will probably access it again soon, so it makes sense to cache it.
+\begin{lstlisting}
+auto x = 1;
+for(auto i = 0zu; i < vec.size(); ++i) {
+    x += 2; // x remains in L1 cache, doesn't get evicted.
+    vec[i] += x;
+}
+\end{lstlisting}
+
 \subsubsection{False Sharing}
+False sharing is a phenomenon that appears when you have two different threads write to elements on the same cache line. When thread a writes while thread b uses another value on the same cache line the cache line gets invalidated and so b has a cache miss and needs to pull the value into cache again despite it not having changed. To avoid this make sure that if two threads access memory often that they are not on the same cache line (easiest solution is to just pad to the next cache line, you can do that using the \texttt{std::hardware\_destructive\_interference\_size} constant.
+\begin{lstlisting}
+constexpr usize k_cacheline_size{std::hardware_destructive_interference_size};
+
+struct Packed {
+    int a{};
+    int b{};
+};
+
+struct Seperated {
+    alignas(k_cacheline_size) int a{};
+    alignas(k_cacheline_size) int b{};
+};
+
+auto func_a(auto& Packed p) -> void {
+    p.a = p.a + 1; // invalidates cache line that Packed lives on
+}
+
+auto func_b(auto& Packed p) -> void {
+    p.b = p.b + 1; // invalidates cache line that Packed lives on
+}
+
+auto func_a_seperated(auto& Seperated p) -> void {
+    p.a = p.a + 1; // Doesn't invalidate cacheline
+}
+
+auto func_b_seperated(auto& Seperated p) -> void {
+    p.b = p.b + 1; // Doesn't invalidate cacheline
+}
+
+\end{lstlisting}
 
 \subsection{Memory Layout and Alignment}
 \subsubsection{Alignment vs Size}
 \subsubsection{Tight Packing vs Padding}
-\subsubsection{AoS vs SoA vs AoSoA}j
+\subsubsection{AoS vs SoA vs AoSoA
 Suppose you have the following representation of a physics owning entity represented as a fat struct
 \begin{lstlisting}
 struct Transform {
