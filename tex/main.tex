@@ -20,10 +20,6 @@
 \usepackage{graphicx}
 \graphicspath{{../images/}}
 
-\usepackage[inkscapelatex=false]{svg}
-\svgsetup{inkscapelatex=false}
-\svgpath{{../images/}}
-
 \usepackage[
   top=1cm,
   left=1cm,
@@ -551,49 +547,51 @@ static_assert(sizeof(WithEBO) == 16);
 \section{STL (Standard Templating Library)}
 \subsection{Iterators}
 \subsubsection{Iterator Categories}
+
 \begin{figure}[h!]
-\centering
+    \centering
+    
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{input_iterator.png}
+        \caption*{Input}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{output_iterator.png}
+        \caption*{Output}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{forward_iterator.png}
+        \caption*{Forward}
+    \end{minipage}
+    
+    \vspace{0.5cm}
+    
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{bidirectional_iterator.png}
+        \caption*{Bidirectional}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{random_access_iterator.png}
+        \caption*{Random Access}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.32\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{contiguous_iterator.png}
+        \caption*{Contiguous}
+    \end{minipage}
+    
+    \caption{Iterator Categories}
+    \end{figure}
 
-\begin{minipage}{0.32\textwidth}
-    \centering
-    \includesvg[width=\linewidth]{input_iterator}
-    \caption*{Input}
-\end{minipage}
-\hfill
-\begin{minipage}{0.32\textwidth}
-    \centering
-    \includesvg[width=\linewidth]{output_iterator}
-    \caption*{Output}
-\end{minipage}
-\hfill
-\begin{minipage}{0.32\textwidth}
-    \centering
-    \includesvg[width=\linewidth]{forward_iterator}
-    \caption*{Forward}
-\end{minipage}
-
-\vspace{0.5cm}
-
-\begin{minipage}{0.32\textwidth}
-    \centering
-    \includesvg[width=\linewidth]{bidirectional_iterator}
-    \caption*{Bidirectional}
-\end{minipage}
-\hfill
-\begin{minipage}{0.32\textwidth}
-    \centering
-    \includesvg[width=\linewidth]{random_access_iterator}
-    \caption*{Random Access}
-\end{minipage}
-\hfill
-\begin{minipage}{0.32\textwidth}
-    \centering
-    \includesvg[width=\linewidth]{contiguous_iterator}
-    \caption*{Contiguous}
-\end{minipage}
-
-\caption{Iterator Categories}
-\end{figure}
 \subsection{Containers}
 \subsection{Algorithms}
 

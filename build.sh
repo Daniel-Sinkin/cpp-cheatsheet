@@ -11,7 +11,6 @@ latexmk -C -outdir="$OUTDIR" "$SRC" >/dev/null 2>&1 || true
 latexmk \
   -pdf \
   -xelatex \
-  -shell-escape \
   -interaction=nonstopmode \
   -file-line-error \
   -synctex=1 \
