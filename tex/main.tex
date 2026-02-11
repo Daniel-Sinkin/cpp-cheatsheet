@@ -167,6 +167,10 @@ Introduced \texttt{print} which allows for structured printing by leveraging the
 std::println("Hello, {}. The value of x is {}", "World", 5);
 \end{lstlisting}
 
+\subsubsection{std::generator}
+\url{https://www.youtube.com/watch?v=7ZazVQB-RKc}
+
+Can access like normal iterators
 \subsection{C++20}
 \subsubsection{std::format}
 Introduced \texttt{std::format} which allows for formatting of variables into strings.
@@ -298,7 +302,7 @@ Every Expression belongs to one of the following value categories:
 \end{itemize}
 When it is an L value or a X value we call it a GL (General L) value, if it is a PR value or a X value we call it a R value. In particular X values are both GL and R values. The naming is a bit unfortunate, it should PL value and L value; or GR value and R value.
 
-Names are inspired by the fact that L values sit on the "left side of assignments" and R values sit on the "right side of assignments" and are temporaries in that sense. More concretely a L value is something that has a set memory location (\texttt{\&x} or more accurately \texttt{std::address\_of}(x)) which can be accessed. An R value is a temporary that does not have an addressable memory location (due to temporary materialisation this is no longer true, but an analogy to think about). X values are GL values which represent expiring objects, so they currently have a fixed memory handle but that one has a "soon" ending lifetime.
+Names are inspired by the fact that L values sit on the "left side of assignments" and R values sit on the "right side of assignments" and are temporaries in that sense. More concretely a L value is something that has a set memory location (\texttt{\&x} or more accurately \texttt{std::address\_of(x)}) which can be accessed. An R value is a temporary that does not have an addressable memory location (due to temporary materialisation this is no longer true, but an analogy to think about). X values are GL values which represent expiring objects, so they currently have a fixed memory handle but that one has a "soon" ending lifetime.
 \begin{lstlisting}[language=cpp,caption={Rule of 5}]
 int x = 5;
 x; // This id-expression is an L value
@@ -520,6 +524,37 @@ static_assert(sizeof(WithEBO) == 16);
 \end{lstlisting}
 
 \subsection{Idioms and Patterns}
+\subsubsection{Two-pointer merge}
+\url{https://en.wikipedia.org/wiki/Merge_algorithm}
+
+If you want to merge two streams or lists together with some inequality relation on the values you do this:
+\begin{lstlisting}
+std::vector<int> a{/*...*/};
+std::vector<int> b{/*...*/};
+std::vector<int> c{};
+c.reserve(a.size() + b.size());
+
+auto it_a = a.begin();
+auto it_b = b.begin()
+while(it_a != a.end() && it_b != b.end()) {
+    if(*it_a <= *it_b) {
+        c.push_back(*it_a);
+        ++it_a;
+    } else {
+        c.push_back(*it_b);
+        ++it_b;
+    }
+}
+while(it_a != a.end()) {
+    c.push_back(*it_a);
+    ++it_a;
+}
+while(it_b != b.end()) {
+    c.push_back(*it_b);
+    ++it_b;
+}
+\end{lstlisting}
+
 \subsubsection{Lazy Delete Idiom / Tombstoning}
 When you want to delete an object in the middle (or beginning) of a vector you first have to push that element to the end and shift everything to the left by 1 and then \texttt{pop\_back}, this can be very expensive, especially if many objects have to be deleted.
 
@@ -577,11 +612,31 @@ for (std::size_t i = v.size(); i-- > 0; )
 
 The range (C++20) based alternative to this is to use
 \begin{lstlisting}
-\texttt{for (auto\& x : std::views::reverse(v)) \{...\}}
+\texttt{for (auto\& x : std::views::reverse(v)) {...}}
 \end{lstlisting}
 
 
+\subsection{ODR (One Definition Rule)}
+Use the \texttt{extern} keyword if you want to decalre a variable but not define it to avoid ODR. Since C++17 you can (and should) use inline for variables instead.
+
+A very subtle ODR bug can occur when you compile some files with debug symbols set and some without.
+
 \subsection{SIOF (Static Initialisation Order Fiasco)}
+When you have two non-local objects (e.g. globals or function-local statics) which have dynamic initialisation (run code in their constructors) which live in different translation units (.cpp files) then the initialisation order between them is not specificied (standard only guarantees it within one translation unit (top-to-bottom)).
+\begin{lstlisting}[caption={a.cpp}]
+extern std::string g_name;
+
+std::string make_greeting() { return "Hello " + g_name; }
+
+std::string g_greeting = make_greeting();
+\end{lstlisting}
+
+\begin{lstlisting}[caption={b.cpp}]
+std::string g_name = "Daniel";
+\end{lstlisting}
+
+Because \texttt{g\_greeting} depends on \texttt{g\_name} it might not have been initialised when you define it, so you'd run into UB. Note that if \texttt{a.cpp} would start with \texttt{std::string g\_name = "Steve"} it would be an ODR (one definition rule) violation not SIOF.
+
 \subsection{Important STL algorithms}
 \subsection{Templates}
 \subsubsection{Variadic Templates}
@@ -659,7 +714,6 @@ For example the Unsigned reverse iteration idiom (\texttt{i-- > 0}) can be imple
 \subsubsection{Range Algorithms}
 \texttt{std::ranges::sort}, \texttt{std::ranges::find}, \texttt{std::ranges::copy}
 \subsubsection{Range Concepts}
-
 
 \subsection{Containers}
 \subsection{Algorithms}
@@ -1467,16 +1521,6 @@ struct TransformBlock {
 \newpage
 \section{Concurrency}
 \subsection{C++ Memory Model}
-There are the following types of iterators:
-\begin{itemize}
-\item \texttt{Input Iterator}, single-pass, read-only
-\item \texttt{Output Iterator}, single-pass, write-only
-\item \texttt{Forward Iterator}, multi-pass, read/write, only moves forward, \texttt{std::unordered\_map} iterator
-\item \texttt{Bidirectional Iterator}, multi-pass, can move forward or backward
-\item \texttt{Random access Iterator}, supports jumping, index accessing, comparison
-\item \texttt{Contiguous Iterator} (was added in C++20 so the Concurrency Book doesn't mention it) It's basically like a random access iterator but it also guarantees that things are laid out contiguously in memory. For example \texttt{std::vector} is contiguous while \texttt{std::deque} stores in blocks so it's only random access.
-\end{itemize}
-\texttt{Input Iterator}
 \subsection{Multiple Threads}
 \subsection{Multiple Processes}
 \subsubsection{OpenMP}
