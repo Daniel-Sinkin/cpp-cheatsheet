@@ -1,19 +1,21 @@
 \documentclass{article}
-\usepackage{graphicx} % Required for inserting images
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{fontspec}
 \usepackage{amsmath, amssymb}
-\usepackage{svg}
+\usepackage[inkscapelatex=false]{svg}
+
+\usepackage{graphicx}
+\graphicspath{{../images/}}
 
 \setmonofont[
-  Path=fonts/,
+  Path=../fonts/,
   UprightFont=MonaspaceKrypton-Regular.otf,
   BoldFont=MonaspaceKrypton-Bold.otf,
   ItalicFont=MonaspaceKrypton-Italic.otf,
   BoldItalicFont=MonaspaceKrypton-BoldItalic.otf
 ]{Monaspace Krypton}
-\usepackage{url}
+\usepackage[hidelinks]{hyperref}
 
 \usepackage[
   top=1cm,
@@ -29,6 +31,7 @@
 \definecolor{lstcomment}{RGB}{0,128,0}
 \definecolor{lststring}{RGB}{163,21,21}
 \definecolor{lstnumber}{RGB}{120,120,120}
+
 
 \lstdefinestyle{cppstyle}{
   language=cpp,
