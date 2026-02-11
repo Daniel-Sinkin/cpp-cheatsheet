@@ -12,11 +12,8 @@ latexmk \
   -pdf \
   -xelatex \
   -interaction=nonstopmode \
+  -halt-on-error \
   -file-line-error \
   -synctex=1 \
   -outdir="$OUTDIR" \
   "$SRC"
-
-echo
-echo "Build successful:"
-echo "  $OUTDIR/main.pdf"

@@ -4,21 +4,18 @@
 \urlstyle{same}
 
 \usepackage{fontspec}
-\usepackage{unicode-math}
-\setmathfont{Latin Modern Math}
 
 \setmonofont[
-  Path=../fonts/,
-  UprightFont=MonaspaceKrypton-Regular.otf,
+  Path=fonts/,
   BoldFont=MonaspaceKrypton-Bold.otf,
   ItalicFont=MonaspaceKrypton-Italic.otf,
   BoldItalicFont=MonaspaceKrypton-BoldItalic.otf
-]{Monaspace Krypton}
+]{MonaspaceKrypton-Regular.otf}
 
 \usepackage{amsmath, amssymb}
 
 \usepackage{graphicx}
-\graphicspath{{../images/}}
+\graphicspath{{images/}}
 
 \usepackage[
   top=1cm,
@@ -350,7 +347,7 @@ void bad_forward(T &&arg)
     kind(arg);
 }
 
-template <typename T>/
+template <typename T>
 void good_forward(T &&arg)
 {
     kind(std::forward<T>(arg));
@@ -550,47 +547,55 @@ static_assert(sizeof(WithEBO) == 16);
 
 \begin{figure}[h!]
     \centering
-    
+
+    \newcommand{\iterheight}{3.5cm}
+
     \begin{minipage}{0.32\textwidth}
         \centering
-        \includegraphics[width=\linewidth]{input_iterator.png}
-        \caption*{Input}
+        \includegraphics[height=\iterheight,keepaspectratio]{input_iterator.png}\\[0.3em]
+        {\small Input iterator}
     \end{minipage}
     \hfill
     \begin{minipage}{0.32\textwidth}
         \centering
-        \includegraphics[width=\linewidth]{output_iterator.png}
-        \caption*{Output}
+        \includegraphics[height=\iterheight,keepaspectratio]{output_iterator.png}\\[0.3em]
+        {\small Output iterator}
     \end{minipage}
     \hfill
     \begin{minipage}{0.32\textwidth}
         \centering
-        \includegraphics[width=\linewidth]{forward_iterator.png}
-        \caption*{Forward}
+        \includegraphics[height=\iterheight,keepaspectratio]{forward_iterator.png}\\[0.3em]
+        {\small Forward iterator}
     \end{minipage}
-    
-    \vspace{0.5cm}
-    
+
+    \caption{Single-pass and forward iterators}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+
+    \newcommand{\iterheight}{3.5cm}
+
     \begin{minipage}{0.32\textwidth}
         \centering
-        \includegraphics[width=\linewidth]{bidirectional_iterator.png}
-        \caption*{Bidirectional}
+        \includegraphics[height=\iterheight,keepaspectratio]{bidirectional_iterator.png}\\[0.3em]
+        {\small Bidirectional iterator}
     \end{minipage}
     \hfill
     \begin{minipage}{0.32\textwidth}
         \centering
-        \includegraphics[width=\linewidth]{random_access_iterator.png}
-        \caption*{Random Access}
+        \includegraphics[height=\iterheight,keepaspectratio]{random_access_iterator.png}\\[0.3em]
+        {\small Random-access iterator}
     \end{minipage}
     \hfill
     \begin{minipage}{0.32\textwidth}
         \centering
-        \includegraphics[width=\linewidth]{contiguous_iterator.png}
-        \caption*{Contiguous}
+        \includegraphics[height=\iterheight,keepaspectratio]{contiguous_iterator.png}\\[0.3em]
+        {\small Contiguous iterator}
     \end{minipage}
-    
-    \caption{Iterator Categories}
-    \end{figure}
+
+    \caption{Bidirectional and stronger iterator categories}
+\end{figure}
 
 \subsection{Containers}
 \subsection{Algorithms}
@@ -1247,9 +1252,9 @@ for(auto i = 0zu; i < n_entities; ++i) {
 A higher overhead but more SIMD aware storage method would be to use AoSoA, where we store arrays of blocks (here with element arrays of size 4 as I'm on NEON, can increase for AVX and AVX512):
 \begin{lstlisting}
 struct TransformBlock {
-    std::array<f23, 8> pos_x;
-    std::array<f23, 8> pos_y;
-    std::array<f23, 8> pos_z;
+    std::array<f32, 8> pos_x;
+    std::array<f32, 8> pos_y;
+    std::array<f32, 8> pos_z;
     /*...*/
 };
 \end{lstlisting}
