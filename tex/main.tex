@@ -1,12 +1,11 @@
 \documentclass{article}
-\usepackage{listings}
-\usepackage{xcolor}
-\usepackage{fontspec}
-\usepackage{amsmath, amssymb}
-\usepackage[inkscapelatex=false]{svg}
 
-\usepackage{graphicx}
-\graphicspath{{../images/}}
+\usepackage[hidelinks]{hyperref}
+\urlstyle{same}
+
+\usepackage{fontspec}
+\usepackage{unicode-math}
+\setmathfont{Latin Modern Math}
 
 \setmonofont[
   Path=../fonts/,
@@ -15,7 +14,15 @@
   ItalicFont=MonaspaceKrypton-Italic.otf,
   BoldItalicFont=MonaspaceKrypton-BoldItalic.otf
 ]{Monaspace Krypton}
-\usepackage[hidelinks]{hyperref}
+
+\usepackage{amsmath, amssymb}
+
+\usepackage{graphicx}
+\graphicspath{{../images/}}
+
+\usepackage[inkscapelatex=false]{svg}
+\svgsetup{inkscapelatex=false}
+\svgpath{{../images/}}
 
 \usepackage[
   top=1cm,
@@ -25,13 +32,15 @@
   footskip=0.7cm
 ]{geometry}
 
+\usepackage{listings}
+\usepackage{xcolor}
+
 \definecolor{lstbg}{RGB}{248,248,248}
 \definecolor{lstframe}{RGB}{220,220,220}
 \definecolor{lstkeyword}{RGB}{0,92,197}
 \definecolor{lstcomment}{RGB}{0,128,0}
 \definecolor{lststring}{RGB}{163,21,21}
 \definecolor{lstnumber}{RGB}{120,120,120}
-
 
 \lstdefinestyle{cppstyle}{
   language=cpp,
@@ -61,6 +70,7 @@
   morekeywords={concept,consteval,constinit,co_await,co_return,co_yield,requires},
   sensitive=true
 }
+
 \lstset{style=cppstyle}
 
 \title{C++ Cheatsheet}
@@ -546,19 +556,19 @@ static_assert(sizeof(WithEBO) == 16);
 
 \begin{minipage}{0.32\textwidth}
     \centering
-    \includesvg[width=\linewidth]{images/input_iterator}
+    \includesvg[width=\linewidth]{input_iterator}
     \caption*{Input}
 \end{minipage}
 \hfill
 \begin{minipage}{0.32\textwidth}
     \centering
-    \includesvg[width=\linewidth]{images/output_iterator}
+    \includesvg[width=\linewidth]{output_iterator}
     \caption*{Output}
 \end{minipage}
 \hfill
 \begin{minipage}{0.32\textwidth}
     \centering
-    \includesvg[width=\linewidth]{images/forward_iterator}
+    \includesvg[width=\linewidth]{forward_iterator}
     \caption*{Forward}
 \end{minipage}
 
@@ -566,19 +576,19 @@ static_assert(sizeof(WithEBO) == 16);
 
 \begin{minipage}{0.32\textwidth}
     \centering
-    \includesvg[width=\linewidth]{images/bidirectional_iterator}
+    \includesvg[width=\linewidth]{bidirectional_iterator}
     \caption*{Bidirectional}
 \end{minipage}
 \hfill
 \begin{minipage}{0.32\textwidth}
     \centering
-    \includesvg[width=\linewidth]{images/random_access_iterator}
+    \includesvg[width=\linewidth]{random_access_iterator}
     \caption*{Random Access}
 \end{minipage}
 \hfill
 \begin{minipage}{0.32\textwidth}
     \centering
-    \includesvg[width=\linewidth]{images/contiguous_iterator}
+    \includesvg[width=\linewidth]{contiguous_iterator}
     \caption*{Contiguous}
 \end{minipage}
 

@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-mkdir -p build
+SRC="tex/main.tex"
+OUTDIR="build"
 
-latexmk -C -outdir=build tex/main.tex >/dev/null 2>&1 || true
+mkdir -p "$OUTDIR"
+
+latexmk -C -outdir="$OUTDIR" "$SRC" >/dev/null 2>&1 || true
 
 latexmk \
   -pdf \
@@ -12,5 +15,9 @@ latexmk \
   -interaction=nonstopmode \
   -file-line-error \
   -synctex=1 \
-  -outdir=build \
-  tex/main.tex
+  -outdir="$OUTDIR" \
+  "$SRC"
+
+echo
+echo "Build successful:"
+echo "  $OUTDIR/main.pdf"
