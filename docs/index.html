@@ -4,8 +4,21 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>C++ Cheat Sheet</title>
-    <meta http-equiv="refresh"
-          content="0; url=pdfjs/web/viewer.html?file=../../main.pdf#zoom=page-width&pagemode=none" />
   </head>
-  <body></body>
+  <body>
+    <script>
+      const base = location.pathname.endsWith("/")
+        ? location.pathname
+        : location.pathname.replace(/\/[^/]*$/, "/");
+
+      const viewer = base + "pdfjs/web/viewer.html";
+      const pdf = base + "main.pdf";
+
+      location.replace(
+        viewer +
+          "?file=" + encodeURIComponent(pdf) +
+          "#pagemode=none&zoom=page-width"
+      );
+    </script>
+  </body>
 </html>
