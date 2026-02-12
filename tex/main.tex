@@ -1203,6 +1203,55 @@ Thus the identity holds for \( k+1 \), and therefore for all \( k \in \mathbb{N}
  = \frac{\operatorname{avg}(2)\cdot 2 + a_3}{3}.
 \end{align*}
 
+\subsubsection{Partition-based Binary Search (Two Sorted Arrays Median)}
+Given two sorted sequences \(A\) and \(B\) with lengths \(n\) and \(m\), we often want the
+\emph{lower median} of the multiset union.
+
+Let \(N=n+m\) and define the left-partition size
+\[
+L := \frac{N+1}{2}.
+\]
+We choose counts \(i\) and \(j\) such that
+\[
+i+j=L,
+\qquad 0 \le i \le n,
+\qquad 0 \le j \le m.
+\]
+Define boundary values (with sentinels):
+\[
+A_L =
+\begin{cases}
+-\infty, & i=0,\\
+A[i-1], & \text{else},
+\end{cases}
+\quad
+A_R =
+\begin{cases}
++\infty, & i=n,\\
+A[i], & \text{else},
+\end{cases}
+\]
+and analogously \(B_L, B_R\) using \(j\).
+The partition is valid iff
+\[
+A_L \le B_R
+\quad\text{and}\quad
+B_L \le A_R.
+\]
+When valid, the lower median is
+\[
+\max(A_L, B_L).
+\]
+We binary search \(i\) in the feasible range
+\[
+i \in \bigl[\max(0, L-m),\ \min(n, L)\bigr],
+\]
+moving left if \(A_L > B_R\) and right otherwise.
+
+\paragraph{Rotated arrays.}
+If \(A\) and \(B\) are rotated-sorted, compute pivots \(p_A, p_B\) (indices of minima) and use
+virtual access \(A^\ast[t] = A[(p_A+t)\bmod n]\), \(B^\ast[t] = B[(p_B+t)\bmod m]\) in the same formulas.
+
 \subsubsection{Prefix Sums}
 \[
 S(k)
@@ -1247,6 +1296,94 @@ any subarray sum can be computed in constant time via
 \sum_{j=i}^{k} x_j = S(k) - S(i-1).
 \]
 \subsection{Problems}
+\subsubsection{Median of Two Circularly Sorted Logs}
+This uses Partition-Based Binary Search with some pivoted indexing.
+
+Suppose you are given two vectors \texttt{A}, \texttt{B} which are rotations of sorted lists. This means there exists \texttt{k\_A}, \texttt{k\_B} such that
+\[
+    \texttt{[A[k\_A], A[k\_A + 1], A[k\_A + 2], ...]}, \texttt{[B[k\_B], B[k\_B + 1], A[k\_B + 2], ...]}
+\]
+are sorted. The rotation offset (which I call pivot) can be computed as follows
+\begin{lstlisting}
+template <typename T>
+auto compute_pivot(std::span<const T> xs) -> usize {
+    if(xs.empty()) {
+        return 0zu;
+    }
+    const auto lo = 0zu;
+    const auto hi = xs.size() - 1;
+
+    while(lo < hi) {
+        const auto lo_start = lo;
+        const auto hi_start = hi;
+        const auto mid = std:midpoint(lo, hi);
+
+        if(xs[mid] < xs[hi]) { // pivot is not in (mid, hi]
+            hi = mid;
+        } else if (xs[lo] < a[mid]) { // pivot is not in [lo, mid)
+            lo = mid + 1; // voids lo == mid, hi = mid + 1 infinte loop
+        } else {
+            // Handling potential duplicates
+            assert(xs[mid] == xs[hi]);
+            --hi;
+        }
+        assert((lo_start < lo || hi < hi_start) && "Got stuck in compute_pivot");
+    }
+    return lo;
+}
+\end{lstlisting}
+this can easily be tested for correctness as follows:
+\begin{lstlisting}
+template <typename T>
+auto get_rotated_vector(std::span<const T> xs, long rotation) -> std::vector<T> {
+    std::vector<T> out;
+    out.resize(xs.size());
+    for(auto i = 0zu; i < xs.size(); ++i) {
+        const auto i_l = static_cast<long>(i);
+        out[static_cast<usize>(i_l + rotation)] = xs[i];
+    }
+    return out;
+}
+
+auto test_compute_pivot() -> void {
+    std::vector<int> vec{};
+    vec.reserve(20);
+    for(auto vec_size = 0zu; vec_size < 20; ++vec_size) 
+    {
+        vec.push_back(vec_size + 1);
+        vec_size_l = static_cast<long>(vec)
+        for(auto rotation = -vec_size_l + 1; rotation < vec_size_l - 1; ++rotation) {
+            const auto vec_rotated = get_rotated_vector(vec, i);
+            const auto pivot = get_pivot(vec_rotated);
+            assert(pivot == rotation || pivot == rotation + vec_size_l - 1);
+        }
+    }
+}
+\end{lstlisting}
+With the pivot we can then shift and get an element of the un-pivoted list:
+\begin{lstlisting}
+template<typename T, typename IndexT>
+auto get_rotated(std::span<const T> xs, IndexT shift, IndexT idx) {
+    return xs[static_cast<usize>(shift + idx) % xs.size()];
+}
+\end{lstlisting}
+As a sidenote, this kind of indexing is prohibitevly expensive for efficient data structures like ring buffers, there we require the size to be a multiple of 2 and we just mask it off directly, but this can't be assumed here.
+
+If one of the two lists is empty then this problem reduces to finding the pivot of the rotation of a sorted list, which by definition just means getting the middle element in the un-rotated list:
+\begin{lstlisting}
+const auto pivot_a = compute_pivot(A);
+if(B.empty()) {
+    assert(!A.empty());
+    return get_rotated(A, pivot_a, (A.size() - 1zu) / 2zu);
+}
+\end{lstlisting}
+
+The general case first computes how my elements we want to have to the left of the median, which is \texttt{num\_left = (A.size() + B.size() + 1) / 2}, compute bounds for what ranges in A this could be satisfied with and then doing binary search to find the desired result. First we think about what the bounds on A can be
+\begin{lstlisting}
+const auto num_A_min = 
+const auto num_A_max = 
+\end{lstlisting}
+
 \subsubsection{Lazy Deletion Stack}
 This uses the Lazy Delete / Tombstone pattern to allow efficiently deleting large parts of a stack to implement \texttt{remove\_lower} and \texttt{remove\_upper}, which cut out (potentially) large parts of the stack. Aside from tombstoning a \texttt{std::map} is used (as opposed to \texttt{std::unordered\_map}) to avoid having to do a linear sweep over the whole stack when deleting objects.
 
