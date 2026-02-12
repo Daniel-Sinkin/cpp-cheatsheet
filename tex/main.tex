@@ -1108,7 +1108,46 @@ This stores the keys as a (balanced) binary search tree (more specifically as a 
 \newpage
 \section{Algorithms}
 \subsection{DFS (Depth First Search)}
+\begin{figure}[h!]
+\centering
+\newcommand{\dfsheight}{3cm}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{0} 
+
+\begin{tabular}{cccc}
+\includegraphics[height=\dfsheight]{dfs1.png} &
+\includegraphics[height=\dfsheight]{dfs2.png} &
+\includegraphics[height=\dfsheight]{dfs3.png} &
+\includegraphics[height=\dfsheight]{dfs4.png} \\
+\includegraphics[height=\dfsheight]{dfs5.png} &
+\includegraphics[height=\dfsheight]{dfs6.png} &
+\includegraphics[height=\dfsheight]{dfs7.png} &
+\includegraphics[height=\dfsheight]{dfs8.png} \\
+\end{tabular}
+
+\caption{Depth First Search traversal steps (min-neighbor tie rule)}
+\end{figure}
+
 \subsection{BFS (Breadth First Search)}
+\begin{figure}[h!]
+\centering
+\newcommand{\bfsheight}{3cm}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{0}
+
+\begin{tabular}{cccc}
+\includegraphics[height=\bfsheight]{bfs1.png} &
+\includegraphics[height=\bfsheight]{bfs2.png} &
+\includegraphics[height=\bfsheight]{bfs3.png} &
+\includegraphics[height=\bfsheight]{bfs4.png} \\
+\includegraphics[height=\bfsheight]{bfs5.png} &
+\includegraphics[height=\bfsheight]{bfs6.png} &
+\includegraphics[height=\bfsheight]{bfs7.png} &
+\includegraphics[height=\bfsheight]{bfs8.png} \\
+\end{tabular}
+
+\caption{Breadth First Search traversal steps (min-neighbor tie rule)}
+\end{figure}
 
 \newpage{}
 \section{Interview Specifics}
@@ -1348,7 +1387,8 @@ In C++ this can be implemented efficiently (no runtime overhead) by using \textt
 \subsection{MongoDB}
 
 \newpage
-\section{Computer Architecture,\\HPC (High Performanc Computing)}
+\section{\texorpdfstring{Computer Architecture,\\HPC (High Performance Computing)}%
+                       {Computer Architecture, HPC (High Performance Computing)}}
 \subsection{Memory Hierarchy and Cache}
 
 \begin{figure}[h!]
@@ -1521,6 +1561,20 @@ struct TransformBlock {
 \newpage
 \section{Concurrency}
 \subsection{C++ Memory Model}
+\subsubsection{Atomics}
+There is only one atomic data type which is required to be lock free, namely \texttt{std::atomic\_flag}. Pretty much every core C++ data type has an atomic version, for example
+\[
+    \texttt{std::atomic<bool>}, \texttt{std::atomic<int>}, \texttt{std::atomic<float>}, \texttt{std::atomic<double>}
+\]
+
+It is important to check if those have hardware support (i.e. work lock free), this can be done by checking the compile time constant
+\[
+    \texttt{std::atomic<T>::is\_always\_lock\_free}
+\]
+
+
+
+
 \subsection{Multiple Threads}
 \subsection{Multiple Processes}
 \subsubsection{OpenMP}
@@ -1533,11 +1587,13 @@ struct TransformBlock {
 \newpage
 \section{Operating Systems}
 \subsection{Process, Thread}
-
 \subsection{Scheduling}
+\subsection{CPU Virtualisation}
+\subsection{Memory Virtualisation}
+Suppose your pages are 16 bytes in size
 
-\subsection{Memory}
 \subsubsection{Paging, TLB}
+Paging as opposed to segmentation slices up the availiable virtual memory into fixed-size pieces.
 
 \newpage
 \section{Networking}
