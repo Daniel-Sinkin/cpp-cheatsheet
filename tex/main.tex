@@ -1367,21 +1367,55 @@ auto get_rotated(std::span<const T> xs, IndexT shift, IndexT idx) {
     return xs[static_cast<usize>(shift + idx) % xs.size()];
 }
 \end{lstlisting}
-As a sidenote, this kind of indexing is prohibitevly expensive for efficient data structures like ring buffers, there we require the size to be a multiple of 2 and we just mask it off directly, but this can't be assumed here.
+As a sidenote, this kind of indexing is expensive for efficient data structures like ring buffers, there we require the size to be a multiple of 2 and we just mask it off directly, but this can't be assumed here.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.95\linewidth]{MedianOfRotation.png}\\[0.3em]
+    \caption{Virtual address translation: virtual page number + offset mapped to a physical frame number + offset}
+    \label{fig:virtual-address-translation}
+\end{figure}
 
 If one of the two lists is empty then this problem reduces to finding the pivot of the rotation of a sorted list, which by definition just means getting the middle element in the un-rotated list:
 \begin{lstlisting}
-const auto pivot_a = compute_pivot(A);
+const auto pivot_A = compute_pivot(A);
 if(B.empty()) {
     assert(!A.empty());
-    return get_rotated(A, pivot_a, (A.size() - 1zu) / 2zu);
+    return get_rotated(A, pivot_A, (A.size() - 1zu) / 2zu);
 }
 \end{lstlisting}
 
-The general case first computes how my elements we want to have to the left of the median, which is \texttt{num\_left = (A.size() + B.size() + 1) / 2}, compute bounds for what ranges in A this could be satisfied with and then doing binary search to find the desired result. First we think about what the bounds on A can be
+The general case first computes how my elements we want to have to the left of the median, which is \texttt{num\_left = (A.size() + B.size() + 1) / 2}, compute bounds for what ranges in A this could be satisfied with and then doing binary search to find the desired result.
+
+We are interested in having \texttt{num\_left = num\_A + num\_B} elements in total where \texttt{num\_\{A, B\}} are the number of elements on the left partition.
 \begin{lstlisting}
-const auto num_A_min = 
-const auto num_A_max = 
+const auto num_A_min = std::max(0, num_left - B.size());
+const auto num_A_max = A.size();
+assert(num_A_min <= num_A_max);
+while(true) {
+    const auto num_A = (num_A_min + num_A_max + 1) / 2;
+    const auto num_B = num_left - num_A;
+
+    constexpr auto long_min = std::numeric_limits<long>::min();
+    constexpr auto long_max = std::numeric_limits<long>::max();
+
+    const auto A_left  = (num_A == 0)        ? long_min : get_rotated(A, pivot_A, num_A - 1);
+    const auto A_right = (num_A == A.size()) ? long_max : get_rotated(A, pivot_A, num_A);
+
+    const auto B_left  = (num_B == 0)        ? long_min : get_rotated(B, pivot_B, num_B - 1);
+    const auto B_right = (num_B == A.size()) ? long_max : get_rotated(B, pivot_B, num_B);
+
+    if(A_left <= B_right && B_left && A_right) {
+        return std::max(A_left, B_left);
+    }
+
+    if(A_left > B_right) {
+        num_A_max = num_A - 1;
+    } else {
+        assert(B_left > A_right);
+        num_B_max = num_A + 1;
+    }
+}
 \end{lstlisting}
 
 \subsubsection{Lazy Deletion Stack}
