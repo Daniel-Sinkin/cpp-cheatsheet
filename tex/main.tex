@@ -1590,15 +1590,12 @@ It is important to check if those have hardware support (i.e. work lock free), t
 \subsection{Scheduling}
 \subsection{CPU Virtualisation}
 \subsection{Memory Virtualisation}
-\subsubsection{Virtual Address Translation (High level)}
 \begin{figure}[h!]
     \centering
     \includegraphics[width=0.95\linewidth]{VirtualAddressTranslation.png}\\[0.3em]
-    \caption{Virtual address translation: virtual page number + offset mapped to a physical frame number + offset (TLB/page table).}
+    \caption{Virtual address translation: virtual page number + offset mapped to a physical frame number + offset}
     \label{fig:virtual-address-translation}
 \end{figure}
-
-\subsubsection{Paging, TLB}
 Paging as opposed to segmentation slices up the availiable virtual memory into fixed-size pieces.
 
 \newpage
