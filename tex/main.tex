@@ -1373,7 +1373,7 @@ As a sidenote, this kind of indexing is expensive for efficient data structures 
     \centering
     \includegraphics[width=0.95\linewidth]{MedianOfRotation.png}\\[0.3em]
     \caption{Virtual address translation: virtual page number + offset mapped to a physical frame number + offset}
-    \label{fig:virtual-address-translation}
+    \label{fig:median-of-rotation}
 \end{figure}
 
 If one of the two lists is empty then this problem reduces to finding the pivot of the rotation of a sorted list, which by definition just means getting the middle element in the un-rotated list:
@@ -1386,6 +1386,14 @@ if(B.empty()) {
 \end{lstlisting}
 
 The general case first computes how my elements we want to have to the left of the median, which is \texttt{num\_left = (A.size() + B.size() + 1) / 2}, compute bounds for what ranges in A this could be satisfied with and then doing binary search to find the desired result.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.95\linewidth]{MedianCircularSorted.png}\\[0.3em]
+    \caption{Visualisation of Bounds}
+    \label{fig:median-circular-sorted}
+\end{figure}
+
 
 We are interested in having \texttt{num\_left = num\_A + num\_B} elements in total where \texttt{num\_\{A, B\}} are the number of elements on the left partition.
 \begin{lstlisting}
