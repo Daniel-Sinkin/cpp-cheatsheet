@@ -721,7 +721,7 @@ For example the Unsigned reverse iteration idiom (\texttt{i-- > 0}) can be imple
 \subsection{Algorithms}
 
 \newpage
-\section{Data Structure implementations}
+\section{Data Structures}
 \subsection{std::vector (Trivially Copyable Types)}
 A \texttt{vector<T>} is a heap allocated sequence container with three pointers \texttt{start\_}, \texttt{end\_}, \texttt{capacity\_}. The first denotes the start of the vector, the second the location AFTER(!) the last allocated elements and the third is the total memory we have allocated. They take up 24 bytes (\texttt{3 * sizeof(T*)}) of stack memory and \texttt{(capacity\_ - start\_) * sizeof(T)} bytes of heap memory.
 
@@ -1175,17 +1175,34 @@ Suppose you want to efficiently pop the largest / smallest entry of a list, this
     \label{fig:max-heap-insert}
 \end{figure}
 
+\subsection{std::unordered\_map}
+Hashmap, you can use your own hashing function.
+
+\subsection{Binary Search Tree (BST), Binary Search}
+A BST is a binary tree which satisfies the property that each node is greater or equal to all nodes in its left subtree and less than all nodes in its right subtree. It allows efficient searching for elements. 
+
+\subsection{Red-Black Tree}
+A self-balancnig BST.
+
+\subsection{std::map}
+This stores the keys as a (balanced) binary search tree (more specifically as a red-black tree).
 
 \subsection{std::array}
 \subsection{std::string}
 \subsection{std::deque}
-\subsection{std::unordered\_map}
-\subsection{std::map}
-This stores the keys as a (balanced) binary search tree (more specifically as a black-red tree).
-
 \subsection{std::pmr::memory\_resource}
-\subsection{std::weak\_ptr}
-\subsection{std::shared\_ptr}
+\subsection{std::weak\_ptr, std::shared\_ptr, Control Block}
+Both \texttt{std::weak\_ptr} and \texttt{std::shared\_ptr} internally track objects via the control block which holds strong counter, weak counter, deleter and (optionally) an allocator.
+\begin{lstlisting}
+struct ControlBlock {
+    std::atomic<usize> strong{};
+    std::atomic<usize> weak{};
+    void (*deleter)(void*);
+    void* ptr;
+}
+\end{lstlisting}
+and \texttt{std::weak\_ptr} holds a pointer to a ControlBlock, \texttt{std::shared\_ptr} holds a pointer to the object and a ControlBlock.
+
 \subsection{std::variant}
 
 \newpage
@@ -1235,6 +1252,11 @@ This stores the keys as a (balanced) binary search tree (more specifically as a 
 \newpage{}
 \section{Interview Specifics}
 \subsection{Tricks}
+\subsubsection{Debug Macro}
+You can use macros to quickly print out the names value of expressions with the following macro. Note that you should always output to \texttt{std::cerr} (I think \texttt{std::clog}) as \texttt{std::cout} is used to evaluate the result.
+\begin{lstlisting}
+#define DS_DBG(x) std::cerr << #x << " = " << (x) << '\n';
+\end{lstlisting}
 \subsubsection{Rolling Average}
 \[
 \operatorname{avg}(k)
@@ -1614,10 +1636,82 @@ for(auto i = 0zu; i < nums.size(); ++i) {
 return out;
 \end{lstlisting}
 
+\subsection{Maximize Profit with Task Deadlines and Multiple Servers}
+Suppose we have \texttt{n} tasks and \texttt{m} workers. Each worker can process one task in a single timestep. Tasks have a profit and a deadline, if a task is completed before its deadline then we get that profit. The problem is to figure out what the optimal assignment of workers is to maximise the total profit.
+
+Because each task has the same duration the optimal strategy is a rolling greedy strategy. We first collect the lists of deadlines and profits into combined Task objects (alternatively one could do permutation on \texttt{std::iota} and use that as a permutation map, but this would only make sense for significantly larger lists).
+\begin{lstlisting}
+template <typename DeadlineT, typename ProfitT>
+struct TaskT {
+    DeadlineT deadline;
+    ProfitT profit;
+};
+template <typename DeadlineT, typename ProfitT>
+auto collect_tasks(const std::vector<DeadlineT>& deadlines, const std::vector<ProfitT>& profits) -> TaskT<DeadLineT, ProfitT> {
+    assert(deadlines.size() == profits.size());
+    std::vector<Task> out;
+    out.reserve(deadlines.size());
+    for(auto i = 0zu; i < deadlines.size(); ++i) {
+        out.emplace_back(deadlines[i], profits[i]);
+    }
+    return out;
+}
+using Task = TaskT<int, int>;
+\end{lstlisting}
+
+These tasks must be sorted by their deadlines (we can't use ranges as HackerRank is stuck on C++20)
+\begin{lstlisting}
+std::vector<Task> tasks = collect_tasks(deadlines, profits);
+std::sort(
+    tasks.begin(),
+    tasks.end(),
+    [](const Task& a, const Task& b) -> bool {
+        return a.deadline < b.deadline;
+    });
+\end{lstlisting}
+
+To efficiently solve this problem we need to be able to quickly evict tasks if they are not worth doing. This is ideally solved by using a \texttt{MinHeap}:
+\begin{lstlisting}
+using MinHeap = std::priority_queue<int, std::vector<int>, std::greater<int>>;
+// using MaxHeap = std::priority_queue<int, std::vector<int>, std::greater<int>>;
+using MaxHeap = std::priority_queue<int>;
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \newcommand{\imgw}{0.25\linewidth}
+    \setlength{\tabcolsep}{6pt}
+    \renewcommand{\arraystretch}{1}
+
+    \begin{tabular}{cc}
+        \includegraphics[width=\imgw]{MaximizeProfitWithTaskDeadlinesAndMultipleServers1.png} &
+        \includegraphics[width=\imgw]{MaximizeProfitWithTaskDeadlinesAndMultipleServers2.png} \\
+    \end{tabular}
+
+    \caption{Maximize profit with task deadlines and multiple servers}
+    \label{fig:max-profit-deadlines-multi-servers}
+\end{figure}
+
+What remains is to iterate through all tasks and check that current rolling window if a task should be evicted due to capacity. We track the total profits and greedily try to improve it.
+\begin{lstlisting}
+MinHeap counts{};
+auto sum = 0l;
+for(auto [deadline, profit] : tasks) {
+    counts.push(profit);
+    sum += profit;
+
+    const auto capacity = static_cast<i64>(num_workers) * static_cast<i64>(d);
+    if(counts.size() >= static_cast<usize>(capacity)) {
+        // Evict worst task
+        sum -= counts.top();
+        counts.pop();
+    }
+}
+\end{lstlisting}
+
 \newpage
 \section{Software Engineering}
 \subsection{Testing, (TDD) Test Driven Development}
-
 
 
 \subsection{Design Patterns}
@@ -1841,7 +1935,7 @@ It is important to check if those have hardware support (i.e. work lock free), t
 \subsection{Memory Virtualisation}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\linewidth]{VirtualAddressTranslation.png}\\[0.3em]
+    \includegraphics[width=0.5\linewidth]{VirtualAddressTranslation.png}\\[0.3em]
     \caption{Virtual address translation: virtual page number + offset mapped to a physical frame number + offset}
     \label{fig:virtual-address-translation}
 \end{figure}
