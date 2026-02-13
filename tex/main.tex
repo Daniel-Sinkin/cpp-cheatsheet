@@ -1477,7 +1477,11 @@ if(B.empty()) {
 }
 \end{lstlisting}
 
-The general case first computes how my elements we want to have to the left of the median, which is \texttt{num\_left = (A.size() + B.size() + 1) / 2}, compute bounds for what ranges in A this could be satisfied with and then doing binary search to find the desired result.
+The general case first computes how my elements we want to have to the left of the median, which is
+\[
+    \texttt{num\_left = (A.size() + B.size() + 1) / 2}
+\]
+compute bounds for what ranges in A this could be satisfied with and then doing binary search to find the desired result.
 
 \begin{figure}[H]
     \centering
@@ -1711,8 +1715,19 @@ for(auto [deadline, profit] : tasks) {
 
 \newpage
 \section{Software Engineering}
-\subsection{Testing, (TDD) Test Driven Development}
+\subsection{Testing, Unit Tests, TDD (Test Driven Development)}
+Good book on testing is \ref{ref:myers-testing}.
 
+The most famous testing frameworks for C++ are Catch2 and Google Test (also known as GTest).
+
+Attributes of tests to focus on:
+\begin{itemize}
+    \item[Falsifiable] Tests set up falsifiable hypothesis. If your "Test Oracle" is your own code then your test is not falsifiable, as you just prove "The code we wrote is the code we wrote". That is NOT a unit test but an acceptance test (those are important for opaque and/or legacy code you don't understand).
+    \item[Repeatable] You get the same answer every time.
+    \item[Replicable] Your colleagues get the same answer as you do.
+    \item[Accuracy] Measurements are "right".
+    \item[Precision] Measurements are "informativ".
+\end{itemize}
 
 \subsection{Design Patterns}
 \subsubsection{Visitor Pattern}
@@ -1720,7 +1735,7 @@ In C++ this can be implemented efficiently (no runtime overhead) by using \textt
 
 \subsubsection{Strategy Pattern}
 
-\subsubsection{CRTP Design Pattern}
+\subsubsection{CRTP (Curiously Recurring Template Pattern) Design Pattern}
 
 \subsubsection{Type Erasure Design Pattern}
 
@@ -1965,22 +1980,27 @@ floating-point expressions using 80-bit x87 registers, which could lead to resul
     \url{https://www.youtube.com/watch?v=m83TjrB6wYw}
 
     \item \label{ref:cpp-software-design}
-    Klaus Iglberger, \emph{C++ Software Design}.  
+    Klaus Iglberger, \emph{C++ Software Design}.
     O’Reilly Media, 2022.
 
     \item \label{ref:ostep}
-    Remzi H. Arpaci-Dusseau, Andrea C. Arpaci-Dusseau,  
-    \emph{Operating Systems: Three Easy Pieces}.  
+    Remzi H. Arpaci-Dusseau, Andrea C. Arpaci-Dusseau,
+    \emph{Operating Systems: Three Easy Pieces}.
     Arpaci-Dusseau Books.  
     \url{https://pages.cs.wisc.edu/~remzi/OSTEP/}
     
     \item \label{ref:pikus-efficient}
-    Fedor Pikus, \emph{The Art of Writing Efficient Programs}.  
+    Fedor Pikus, \emph{The Art of Writing Efficient Programs}.
     Apress, 2021.
 
     \item \label{ref:cpp-concurrency}
-    Anthony Williams, \emph{C++ Concurrency in Action} (2nd ed.).  
+    Anthony Williams, \emph{C++ Concurrency in Action} (2nd ed.),
     Manning Publications, 2019.
+
+    \item \label{ref:myers-testing}
+    Glenford J. Myers,
+    \emph{The Art of Software Testing}.
+    Wiley, 1979.
 \end{itemize}
 
 \end{document}
