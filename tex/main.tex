@@ -4,6 +4,7 @@
 \urlstyle{same}
 
 \usepackage{fontspec}
+\usepackage{array}
 
 \setmonofont[
   Path=fonts/,
@@ -1093,6 +1094,69 @@ auto storage() const -> const T* {
 }
 \end{lstlisting}
 
+\subsection{Tree}
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.7\linewidth]{GeneralTree.png}\\[0.3em]
+    \caption{General tree (arbitrary number of children per node)}
+    \label{fig:general-tree}
+\end{figure}
+\begin{lstlisting}
+struct TreeNode {
+    int value{};
+    std::vector<std::unique_ptr<TreeNode>> children{};
+};
+\end{lstlisting}
+
+\subsection{Binary Tree}
+A special type of Tree where every node has at most 2 children.
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.5\linewidth]{BinaryTree.png}\\[0.3em]
+    \caption{Binary tree (each node has at most two children)}
+    \label{fig:binary-tree}
+\end{figure}
+\begin{lstlisting}
+struct BinaryTreeNode {
+    int value{};
+    std::unique_ptr<std::unique_ptr<TreeNode>> left{};
+    std::unique_ptr<std::unique_ptr<TreeNode>> right{};
+};
+\end{lstlisting}
+
+\subsection{Complete Binary Tree}
+A complete binary tree is one that is "filled up" from left to right, meaning that each level gets filled in first if possible.
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.7\linewidth]{CompleteBinaryTreeExamples.png}\\[0.3em]
+    \caption{Left is a binary tree that is not complete, middle is not a binary tree, right is a complete binary tree}
+    \label{fig:complete-binary-tree-examples}
+\end{figure}
+
+Complete binary trees can be addressed very efficiently by the rule that the element with offset \(i\) in level \(L\) is indexed by
+\[
+    I(L, i) = 2^L - 1 + i.
+\]
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.5\linewidth]{CompleteBinaryTree.png}\\[0.3em]
+    \caption{Complete binary tree (filled left-to-right)}
+    \label{fig:complete-binary-tree}
+\end{figure}
+
+\subsection{std::priority\_queue (Max Heap)}
+Suppose you want to efficiently pop the largest / smallest entry of a list, this is what max / min heaps are great for. Idea is that you have a linear array representing a complete binary tree in the usual way (root is idx 0, its children are 1, 2, their children are 3, 4 and 5, 6 respectively and so on).
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.7\linewidth]{MaxHeapInsert1.png}\\[0.4em]
+    \includegraphics[width=0.7\linewidth]{MaxHeapInsert2.png}\\[0.4em]
+    \includegraphics[width=0.7\linewidth]{MaxHeapInsert3.png}\\[0.4em]
+    \includegraphics[width=0.7\linewidth]{MaxHeapInsert4.png}\\[0.4em]
+    \caption{Max-heap insertion (heapify-up steps)}
+    \label{fig:max-heap-insert}
+\end{figure}
+
+
 \subsection{std::array}
 \subsection{std::string}
 \subsection{std::deque}
@@ -1248,10 +1312,6 @@ i \in \bigl[\max(0, L-m),\ \min(n, L)\bigr],
 \]
 moving left if \(A_L > B_R\) and right otherwise.
 
-\paragraph{Rotated arrays.}
-If \(A\) and \(B\) are rotated-sorted, compute pivots \(p_A, p_B\) (indices of minima) and use
-virtual access \(A^\ast[t] = A[(p_A+t)\bmod n]\), \(B^\ast[t] = B[(p_B+t)\bmod m]\) in the same formulas.
-
 \subsubsection{Prefix Sums}
 \[
 S(k)
@@ -1303,63 +1363,54 @@ Suppose you are given two vectors \texttt{A}, \texttt{B} which are rotations of 
 \[
     \texttt{[A[k\_A], A[k\_A + 1], A[k\_A + 2], ...]}, \texttt{[B[k\_B], B[k\_B + 1], A[k\_B + 2], ...]}
 \]
-are sorted. The rotation offset (which I call pivot) can be computed as follows
+are sorted. The rotation offset (which I call pivot) can then be computed by using binary search
+
+\begin{figure}[h!]
+\centering
+\newcommand{\pbheight}{3cm}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1}
+
+\begin{tabular}{ccc}
+\includegraphics[height=\pbheight]{PivotBisect1.png} &
+\includegraphics[height=\pbheight]{PivotBisect2.png} &
+\includegraphics[height=\pbheight]{PivotBisect3.png} \\
+\includegraphics[height=\pbheight]{PivotBisect4.png} &
+\includegraphics[height=\pbheight]{PivotBisect5.png} &
+\includegraphics[height=\pbheight]{PivotBisect6.png} \\
+\end{tabular}
+
+\caption{Pivot + partition-binary-search steps (circularly sorted arrays)}
+\label{fig:pivot-bisect-steps}
+\end{figure}
+
 \begin{lstlisting}
 template <typename T>
 auto compute_pivot(std::span<const T> xs) -> usize {
-    if(xs.empty()) {
-        return 0zu;
-    }
-    const auto lo = 0zu;
-    const auto hi = xs.size() - 1;
+    if (xs.empty()) { return 0zu; }
 
-    while(lo < hi) {
-        const auto lo_start = lo;
-        const auto hi_start = hi;
-        const auto mid = std:midpoint(lo, hi);
+    auto left = 0zu;
+    auto right = xs.size() - 1zu;
+    while (left < right) {
+        const usize mid = std::midpoint(left, right);
 
-        if(xs[mid] < xs[hi]) { // pivot is not in (mid, hi]
-            hi = mid;
-        } else if (xs[lo] < a[mid]) { // pivot is not in [lo, mid)
-            lo = mid + 1; // voids lo == mid, hi = mid + 1 infinte loop
-        } else {
-            // Handling potential duplicates
-            assert(xs[mid] == xs[hi]);
-            --hi;
+        if (xs[mid] < xs[right]) {
+            // Pivot in RHS
+            right = mid;
         }
-        assert((lo_start < lo || hi < hi_start) && "Got stuck in compute_pivot");
-    }
-    return lo;
-}
-\end{lstlisting}
-this can easily be tested for correctness as follows:
-\begin{lstlisting}
-template <typename T>
-auto get_rotated_vector(std::span<const T> xs, long rotation) -> std::vector<T> {
-    std::vector<T> out;
-    out.resize(xs.size());
-    for(auto i = 0zu; i < xs.size(); ++i) {
-        const auto i_l = static_cast<long>(i);
-        out[static_cast<usize>(i_l + rotation)] = xs[i];
-    }
-    return out;
-}
-
-auto test_compute_pivot() -> void {
-    std::vector<int> vec{};
-    vec.reserve(20);
-    for(auto vec_size = 0zu; vec_size < 20; ++vec_size) 
-    {
-        vec.push_back(vec_size + 1);
-        vec_size_l = static_cast<long>(vec)
-        for(auto rotation = -vec_size_l + 1; rotation < vec_size_l - 1; ++rotation) {
-            const auto vec_rotated = get_rotated_vector(vec, i);
-            const auto pivot = get_pivot(vec_rotated);
-            assert(pivot == rotation || pivot == rotation + vec_size_l - 1);
+        else if (xs[mid] > xs[right]) {
+            // Pivot in LHS
+            left = mid + 1zu;
+        }
+        else {
+            assert(xs[mid] == xs[right]);
+            --right;
         }
     }
+    return left;
 }
 \end{lstlisting}
+
 With the pivot we can then shift and get an element of the un-pivoted list:
 \begin{lstlisting}
 template<typename T, typename IndexT>
@@ -1371,8 +1422,8 @@ As a sidenote, this kind of indexing is expensive for efficient data structures 
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.95\linewidth]{MedianOfRotation.png}\\[0.3em]
-    \caption{Virtual address translation: virtual page number + offset mapped to a physical frame number + offset}
+    \includegraphics[width=0.5\linewidth]{MedianOfRotation.png}\\[0.3em]
+    \caption{Median of Rotation}
     \label{fig:median-of-rotation}
 \end{figure}
 
@@ -1389,13 +1440,13 @@ The general case first computes how my elements we want to have to the left of t
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=0.95\linewidth]{MedianCircularSorted.png}\\[0.3em]
+    \includegraphics[width=0.5\linewidth]{MedianCircularSorted.png}\\[0.3em]
     \caption{Visualisation of Bounds}
     \label{fig:median-circular-sorted}
 \end{figure}
 
 
-We are interested in having \texttt{num\_left = num\_A + num\_B} elements in total where \texttt{num\_\{A, B\}} are the number of elements on the left partition.
+We are interested in having \texttt{num\_left = num\_A + num\_B} elements in total where \texttt{num\_\{A, B\}} are the number of elements on the left partition. We exit when we have a valid partition, which is categorized by us preserving the ordering (left most element in A is left of right most element of B and v.v.).
 \begin{lstlisting}
 const auto num_A_min = std::max(0, num_left - B.size());
 const auto num_A_max = A.size();
@@ -1413,7 +1464,7 @@ while(true) {
     const auto B_left  = (num_B == 0)        ? long_min : get_rotated(B, pivot_B, num_B - 1);
     const auto B_right = (num_B == A.size()) ? long_max : get_rotated(B, pivot_B, num_B);
 
-    if(A_left <= B_right && B_left && A_right) {
+    if(A_left <= B_right && B_left && A_right) { // Partition is Valid
         return std::max(A_left, B_left);
     }
 
