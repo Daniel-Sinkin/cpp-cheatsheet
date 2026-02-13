@@ -656,19 +656,19 @@ Because \texttt{g\_greeting} depends on \texttt{g\_name} it might not have been 
 
     \begin{minipage}{0.32\textwidth}
         \centering
-        \includegraphics[height=\iterheight,keepaspectratio]{input_iterator.png}\\[0.3em]
+        \includegraphics[height=\iterheight,keepaspectratio]{IteratorInput.png}\\[0.3em]
         {\small Input iterator}
     \end{minipage}
     \hfill
     \begin{minipage}{0.32\textwidth}
         \centering
-        \includegraphics[height=\iterheight,keepaspectratio]{output_iterator.png}\\[0.3em]
+        \includegraphics[height=\iterheight,keepaspectratio]{IteratorOutput.png}\\[0.3em]
         {\small Output iterator}
     \end{minipage}
     \hfill
     \begin{minipage}{0.32\textwidth}
         \centering
-        \includegraphics[height=\iterheight,keepaspectratio]{forward_iterator.png}\\[0.3em]
+        \includegraphics[height=\iterheight,keepaspectratio]{IteratorForward.png}\\[0.3em]
         {\small Forward iterator}
     \end{minipage}
 
@@ -682,19 +682,19 @@ Because \texttt{g\_greeting} depends on \texttt{g\_name} it might not have been 
 
     \begin{minipage}{0.32\textwidth}
         \centering
-        \includegraphics[height=\iterheight,keepaspectratio]{bidirectional_iterator.png}\\[0.3em]
+        \includegraphics[height=\iterheight,keepaspectratio]{IteratorBidirectional.png}\\[0.3em]
         {\small Bidirectional iterator}
     \end{minipage}
     \hfill
     \begin{minipage}{0.32\textwidth}
         \centering
-        \includegraphics[height=\iterheight,keepaspectratio]{random_access_iterator.png}\\[0.3em]
+        \includegraphics[height=\iterheight,keepaspectratio]{IteratorRandomAccess.png}\\[0.3em]
         {\small Random-access iterator}
     \end{minipage}
     \hfill
     \begin{minipage}{0.32\textwidth}
         \centering
-        \includegraphics[height=\iterheight,keepaspectratio]{contiguous_iterator.png}\\[0.3em]
+        \includegraphics[height=\iterheight,keepaspectratio]{IteratorContiguous.png}\\[0.3em]
         {\small Contiguous iterator}
     \end{minipage}
 
@@ -702,7 +702,7 @@ Because \texttt{g\_greeting} depends on \texttt{g\_name} it might not have been 
 \end{figure}
 
 \subsection{Ranges}
-First introduced in C++20, base don Eric Niebler's \texttt{Range-v3} library.
+First introduced in C++20, based on Eric Niebler's \texttt{Range-v3} library.
 \subsubsection{Core Concepts}
 \subsubsection{Views}
 \texttt{std::ranges::filter}, \texttt{std::ranges::take}, \texttt{std::ranges::reverse}
@@ -1673,7 +1673,7 @@ std::sort(
 To efficiently solve this problem we need to be able to quickly evict tasks if they are not worth doing. This is ideally solved by using a \texttt{MinHeap}:
 \begin{lstlisting}
 using MinHeap = std::priority_queue<int, std::vector<int>, std::greater<int>>;
-// using MaxHeap = std::priority_queue<int, std::vector<int>, std::greater<int>>;
+// using MaxHeap = std::priority_queue<int, std::vector<int>, std::less<int>>;
 using MaxHeap = std::priority_queue<int>;
 \end{lstlisting}
 
