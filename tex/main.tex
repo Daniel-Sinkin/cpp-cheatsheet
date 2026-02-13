@@ -5,6 +5,7 @@
 
 \usepackage{fontspec}
 \usepackage{array}
+\usepackage{float}
 
 \setmonofont[
   Path=fonts/,
@@ -648,7 +649,7 @@ Because \texttt{g\_greeting} depends on \texttt{g\_name} it might not have been 
 \subsection{Iterators}
 \subsubsection{Iterator Categories}
 
-\begin{figure}[h!]
+\begin{figure}[H]
     \centering
 
     \newcommand{\iterheight}{3.5cm}
@@ -674,7 +675,7 @@ Because \texttt{g\_greeting} depends on \texttt{g\_name} it might not have been 
     \caption{Single-pass and forward iterators}
 \end{figure}
 
-\begin{figure}[h!]
+\begin{figure}[H]
     \centering
 
     \newcommand{\iterheight}{3.5cm}
@@ -1095,7 +1096,7 @@ auto storage() const -> const T* {
 \end{lstlisting}
 
 \subsection{Tree}
-\begin{figure}[h!]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.7\linewidth]{GeneralTree.png}\\[0.3em]
     \caption{General tree (arbitrary number of children per node)}
@@ -1110,7 +1111,7 @@ struct TreeNode {
 
 \subsection{Binary Tree}
 A special type of Tree where every node has at most 2 children.
-\begin{figure}[h!]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.5\linewidth]{BinaryTree.png}\\[0.3em]
     \caption{Binary tree (each node has at most two children)}
@@ -1126,7 +1127,7 @@ struct BinaryTreeNode {
 
 \subsection{Complete Binary Tree}
 A complete binary tree is one that is "filled up" from left to right, meaning that each level gets filled in first if possible.
-\begin{figure}[h!]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.7\linewidth]{CompleteBinaryTreeExamples.png}\\[0.3em]
     \caption{Left is a binary tree that is not complete, middle is not a binary tree, right is a complete binary tree}
@@ -1137,7 +1138,7 @@ Complete binary trees can be addressed very efficiently by the rule that the ele
 \[
     I(L, i) = 2^L - 1 + i.
 \]
-\begin{figure}[h!]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.5\linewidth]{CompleteBinaryTree.png}\\[0.3em]
     \caption{Complete binary tree (filled left-to-right)}
@@ -1146,12 +1147,30 @@ Complete binary trees can be addressed very efficiently by the rule that the ele
 
 \subsection{std::priority\_queue (Max Heap)}
 Suppose you want to efficiently pop the largest / smallest entry of a list, this is what max / min heaps are great for. Idea is that you have a linear array representing a complete binary tree in the usual way (root is idx 0, its children are 1, 2, their children are 3, 4 and 5, 6 respectively and so on).
-\begin{figure}[h!]
+\begin{figure}[H]
     \centering
-    \includegraphics[width=0.7\linewidth]{MaxHeapInsert1.png}\\[0.4em]
-    \includegraphics[width=0.7\linewidth]{MaxHeapInsert2.png}\\[0.4em]
-    \includegraphics[width=0.7\linewidth]{MaxHeapInsert3.png}\\[0.4em]
-    \includegraphics[width=0.7\linewidth]{MaxHeapInsert4.png}\\[0.4em]
+    \begin{minipage}{0.48\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{MaxHeapInsert1.png}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.48\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{MaxHeapInsert2.png}
+    \end{minipage}
+
+    \vspace{0.6em}
+
+    \begin{minipage}{0.48\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{MaxHeapInsert3.png}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.48\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{MaxHeapInsert4.png}
+    \end{minipage}
+
     \caption{Max-heap insertion (heapify-up steps)}
     \label{fig:max-heap-insert}
 \end{figure}
@@ -1172,7 +1191,7 @@ This stores the keys as a (balanced) binary search tree (more specifically as a 
 \newpage
 \section{Algorithms}
 \subsection{DFS (Depth First Search)}
-\begin{figure}[h!]
+\begin{figure}[H]
 \centering
 \newcommand{\dfsheight}{3cm}
 \setlength{\tabcolsep}{6pt}
@@ -1193,7 +1212,7 @@ This stores the keys as a (balanced) binary search tree (more specifically as a 
 \end{figure}
 
 \subsection{BFS (Breadth First Search)}
-\begin{figure}[h!]
+\begin{figure}[H]
 \centering
 \newcommand{\bfsheight}{3cm}
 \setlength{\tabcolsep}{6pt}
@@ -1365,7 +1384,7 @@ Suppose you are given two vectors \texttt{A}, \texttt{B} which are rotations of 
 \]
 are sorted. The rotation offset (which I call pivot) can then be computed by using binary search
 
-\begin{figure}[h!]
+\begin{figure}[H]
 \centering
 \newcommand{\pbheight}{3cm}
 \setlength{\tabcolsep}{6pt}
@@ -1420,7 +1439,7 @@ auto get_rotated(std::span<const T> xs, IndexT shift, IndexT idx) {
 \end{lstlisting}
 As a sidenote, this kind of indexing is expensive for efficient data structures like ring buffers, there we require the size to be a multiple of 2 and we just mask it off directly, but this can't be assumed here.
 
-\begin{figure}[h!]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.5\linewidth]{MedianOfRotation.png}\\[0.3em]
     \caption{Median of Rotation}
@@ -1438,7 +1457,7 @@ if(B.empty()) {
 
 The general case first computes how my elements we want to have to the left of the median, which is \texttt{num\_left = (A.size() + B.size() + 1) / 2}, compute bounds for what ranges in A this could be satisfied with and then doing binary search to find the desired result.
 
-\begin{figure}[h!]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.5\linewidth]{MedianCircularSorted.png}\\[0.3em]
     \caption{Visualisation of Bounds}
@@ -1621,7 +1640,7 @@ In C++ this can be implemented efficiently (no runtime overhead) by using \textt
                        {Computer Architecture, HPC (High Performance Computing)}}
 \subsection{Memory Hierarchy and Cache}
 
-\begin{figure}[h!]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.95\linewidth]{cache_hierarchy.png}\\[0.3em]
     \caption{CPU cache hierarchy (registers, L1/L2/L3, main memory)}
@@ -1820,7 +1839,7 @@ It is important to check if those have hardware support (i.e. work lock free), t
 \subsection{Scheduling}
 \subsection{CPU Virtualisation}
 \subsection{Memory Virtualisation}
-\begin{figure}[h!]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.95\linewidth]{VirtualAddressTranslation.png}\\[0.3em]
     \caption{Virtual address translation: virtual page number + offset mapped to a physical frame number + offset}
