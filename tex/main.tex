@@ -14,7 +14,7 @@
   BoldItalicFont=MonaspaceKrypton-BoldItalic.otf
 ]{MonaspaceKrypton-Regular.otf}
 
-\usepackage{amsmath, amssymb}
+\usepackage{amsmath, amssymb, amsthm}
 
 \usepackage{graphicx}
 \graphicspath{{images/}}
@@ -1252,6 +1252,98 @@ and \texttt{std::weak\_ptr} holds a pointer to a ControlBlock, \texttt{std::shar
 \newpage{}
 \section{Interview Specifics}
 \subsection{Tricks}
+\subsubsection{Reverse Heap for bounded count}
+Suppose that you have an array of \texttt{n} elements and you want to get the top \texttt{k} elements of it. One way of doing this is to create a \texttt{MaxHeap} and to push all elements on it and pop k times, but this means you have \texttt{n} elements in your heap but only need k. 
+\begin{lstlisting}
+auto top_k_naive(const std::vector<int>& xs, int k) -> std::vector<int> {
+    std::priority_queue<int> max_heap{};
+    for(const auto x : xs) {
+        heap.push(x);
+    }
+    std::vector<int> out;
+    out.reserve(static_cast<usize>(k));
+    for(auto i = 0zu; !heap.empty() && i < k; ++i) {
+        out.push_back(heap.top());
+        heap.pop();
+    }
+    return out;
+}
+\end{lstlisting}
+The way to do this is to instead create a \texttt{MinHeap} and to iteratively pop elements as we insert them once we have reached our target:
+\begin{lstlisting}
+auto top_k(const std::vector<int>& xs, int k) -> std::vector<int> {
+    std::priority_queue<int, std::vector<int>, std::greater<int>> min_heap{};
+    for(const auto x : xs) {
+        min_heap.push(x);
+        if(min_heap.size() > k) {
+            // Pops the smallest element
+            min_heap.pop();
+        }
+    }
+    std::vector<int> out;
+    out.reserve(static_cast<usize>(k));
+    for(auto i = 0zu; !min_heap.empty() && i < k; ++i) {
+        out.push_back(min_heap.top());
+        min_heap.pop();
+    }
+    return out;
+}
+\end{lstlisting}
+
+\paragraph{Claim.}
+Let $x_1,\dots,x_n$ be the input values and let $k \ge 1$.
+Maintain a min-heap $H$ with the rule: push each $x_i$ into $H$ and, if $|H|>k$, pop once.
+Then after processing all $n$ elements:
+
+\begin{enumerate}
+\item $|H|=\min(k,n)$,
+\item every element in $H$ is among the $\min(k,n)$ largest elements of $\{x_1,\dots,x_n\}$,
+\item the element $\min(H)$ (the heap top) equals the $k$-th largest element (when $n \ge k$).
+\end{enumerate}
+
+\paragraph{Proof (invariant argument).}
+Process the stream left-to-right.
+For each prefix $P_i := \{x_1,\dots,x_i\}$ define $T_i$ to be the multiset of the
+$\min(k,i)$ largest elements of $P_i$.
+
+We show by induction on $i$ that after processing $x_i$, the heap content equals $T_i$ as multisets.
+
+\textbf{Base case ($i=1$).}
+After pushing $x_1$, the heap contains $\{x_1\}$ and no pop occurs.
+Thus $H = \{x_1\} = T_1$.
+
+\textbf{Induction step.}
+Assume after processing $x_{i-1}$ we have $H = T_{i-1}$.
+Now insert $x_i$ into $H$.
+
+\emph{Case 1: $i \le k$.}
+No pop occurs, so $H = T_{i-1} \cup \{x_i\}$.
+Since $i \le k$, the set of the $\min(k,i)=i$ largest elements of $P_i$ is just all of $P_i$,
+hence $T_i = P_i = T_{i-1} \cup \{x_i\}$, so $H=T_i$.
+
+\emph{Case 2: $i > k$.}
+After the push we have $k+1$ elements, then we pop the minimum element $m$.
+So the new heap is
+\[
+H' = \bigl(T_{i-1} \cup \{x_i\}\bigr) \setminus \{m\},
+\qquad m = \min\bigl(T_{i-1} \cup \{x_i\}\bigr).
+\]
+We claim $H' = T_i$.
+
+Indeed, $T_{i-1} \cup \{x_i\}$ consists of $k+1$ candidates for the top-$k$ of $P_i$.
+Removing the smallest element among these $k+1$ leaves exactly the $k$ largest elements of the union.
+Equivalently, the only element that can be excluded from the top-$k$ of $P_i$ is the smallest among
+these $k+1$ numbers; all remaining elements are $\ge m$ and therefore dominate $m$.
+Thus the $k$-largest multiset of $P_i$ is precisely
+\[
+T_i = \bigl(T_{i-1} \cup \{x_i\}\bigr) \setminus \{\min(T_{i-1} \cup \{x_i\})\} = H'.
+\]
+
+In both cases the invariant holds, so by induction $H = T_n$ after all insertions.
+Items (1)--(3) follow immediately: when $n \ge k$, $H$ contains exactly the $k$ largest elements,
+and the minimum of these is the $k$-th largest overall.
+\qed
+
 \subsubsection{Debug Macro}
 You can use macros to quickly print out the names value of expressions with the following macro. Note that you should always output to \texttt{std::cerr} (I think \texttt{std::clog}) as \texttt{std::cout} is used to evaluate the result.
 \begin{lstlisting}
