@@ -1494,7 +1494,7 @@ Let \texttt{nums} be an array of integers, a subarray is a contiguous non-empty 
 
 The solution to this is known Kadane's algorithm, we greedily decide in each step if we should start a ne w subarray or extend the current one. There is never a reason to backtrack.
 \begin{lstlisting}
-auto best_sum = 0;
+auto best_sum = std::numeric_limits<int>::lowest();
 auto current_sum = 0;
 for(const auto num : nums) {
     current_sum = std::max(
