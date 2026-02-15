@@ -1489,6 +1489,23 @@ any subarray sum can be computed in constant time via
 \sum_{j=i}^{k} x_j = S(k) - S(i-1).
 \]
 \subsection{Problems}
+\subsubsection{Maximum Subarray}
+Let \texttt{nums} be an array of integers, a subarray is a contiguous non-empty sequence of elements in that array. We are interested in finding the largest subarray.
+
+The solution to this is known Kadane's algorithm, we greedily decide in each step if we should start a ne w subarray or extend the current one. There is never a reason to backtrack.
+\begin{lstlisting}
+auto best_sum = 0;
+auto current_sum = 0;
+for(const auto num : nums) {
+    current_sum = std::max(
+        current_sum + num, // Extend current subarray
+        num // Make a new subarray
+    );
+    best_sum = std::max(best_sum, current_sum);
+}
+return best_sum;
+\end{lstlisting}
+
 \subsubsection{Median of Two Circularly Sorted Logs}
 This uses Partition-Based Binary Search with some pivoted indexing.
 
