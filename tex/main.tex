@@ -1515,6 +1515,46 @@ any subarray sum can be computed in constant time via
 \sum_{j=i}^{k} x_j = S(k) - S(i-1).
 \]
 \subsection{Problems}
+\subsubsection{Unique Paths}
+This is basically THE intro DP / memoization problem. Suppose you start at \texttt{(0, 0)} and you can only go to the right or to the bottom. How many unique paths are there to get to \texttt{(m, n)}?
+
+Idea is to memoize on every position, the value of very position is simply the sum of the value of going right once and of going going down once, this causes a lot of overcounting, with memoization we avoid this overcounting.
+
+\begin{lstlisting}
+constexpr auto k_not_init = -1;
+
+class Solution {
+    auto uniques_path(int m, int n) -> int {
+        m_ = m;
+        n_ = n;
+        memo_.assign(m * n, k_not_init);
+
+        return helper(0, 0);
+    }
+
+private:
+    std::vector<int> memo_;
+    int m_;
+    int n_;
+
+    auto get(int m, int n) -> usize {
+        return m * n_ + n;
+    }
+
+    auto helper(int m, int n) -> int {
+        if(m >= m_ || n >= n_) return 0;
+        if(m == m_ && n == n_) return 1;
+
+        const auto idx = get(m, n);
+        if(memo_[idx] == k_not_init) {
+            memo_[idx] = helper(m + 1, n) + helper(m, n + 1);
+        }
+        return memo_[idx];
+    }
+};
+
+\end{lstlisting}
+
 \subsubsection{Merge sorted linked lists}
 Given two (ascendingly) sorted linked lists \texttt{a}, \texttt{b} we want to merge \texttt{b} into \texttt{a} such that a is still sorted. The main tricky part is to realise that adding a dummy node makes the merging much simpler.
 \begin{lstlisting}
