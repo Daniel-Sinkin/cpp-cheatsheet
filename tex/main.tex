@@ -1515,6 +1515,40 @@ any subarray sum can be computed in constant time via
 \sum_{j=i}^{k} x_j = S(k) - S(i-1).
 \]
 \subsection{Problems}
+\subsection{Clone Graph}
+Suppose you are given a graph node \texttt{Node*}, adjacency is encoded by a per-element \texttt{std::vector<Node*>}. We are interested in making a deep copy of that graph.
+
+Core idea is to do a \texttt{DFS} (or \texttt{BFS}) through the graph to touch all nodes, store the "new-to-old" \texttt{Node} relationship in a \texttt{std::unordered\_map}.
+\begin{lstlisting}
+using OldNode = Node;
+using NewNode = Node;
+
+auto graph_deep_copy(OldNode* node) -> Node* {
+    if(!node) return nullptr;
+
+    std::unordered_map<OldNode*, NewNode*> old_to_new{};
+    std::stack<OldNode*> to_visit{};
+
+    old_to_new[node] = new NewNode(node->val);
+    to_visit.push(node);
+    while(!to_visit.empty()) {
+        OldNode* curr = to_visit.top();
+        to_visit.pop();
+
+        NewNode* curr_cpy = old_to_new[curr];
+        for(OldNode* nb : curr->neighbors) {
+            if(!nb) continue;
+            if(const auto it = old_to_new.find(nb); it == old_to_new.end()) {
+                old_to_new[nb] = new NewNode(nb->val);
+                to_visit.push(nb);
+            }
+            curr_cpy->neighbors.push_back(old_to_new[nb]);
+        }
+    }
+    return old_to_new[node];
+}
+\end{lstlisting}
+
 \subsubsection{Maximum Subarray}
 Let \texttt{nums} be an array of integers, a subarray is a contiguous non-empty sequence of elements in that array. We are interested in finding the largest subarray.
 
