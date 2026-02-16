@@ -1515,9 +1515,48 @@ any subarray sum can be computed in constant time via
 \sum_{j=i}^{k} x_j = S(k) - S(i-1).
 \]
 \subsection{Problems}
+\subsubsection{Merge sorted linked lists}
+Given two (ascendingly) sorted linked lists \texttt{a}, \texttt{b} we want to merge \texttt{b} into \texttt{a} such that a is still sorted. The main tricky part is to realise that adding a dummy node makes the merging much simpler.
+\begin{lstlisting}
+auto merge2(ListNode* a, ListNode* b) -> ListNode* {
+    ListNode dummy();
+    ListNode* tail = &dummy;
+
+    while(a && b) {
+        if(a->val <= b->val) {
+            tail->next = a;
+            a = a->next;
+        } else {
+            tail->next = b;
+            b = b->next;
+        }
+        tail = tail->next;
+    }
+    tail->next = a ? a : b;
+    return dummy;
+}
+\end{lstlisting}
+This can then easily be extended to merging arbitrarily many linked lists:
+\begin{lstlisting}
+auto mergeK(std::vector<ListNode*> lists) -> ListNode* {
+    if(lists.empty()) {
+        return nullptr;
+    }
+    if(lists.size() == 1) {
+        return lists[0];
+    }
+    auto curr = lists[0];
+    for(auto i = 1zu; i < lists.size(); ++i) {
+        curr = merge2(curr, lists[i]);
+    }
+    return curr;
+}
+\end{lstlisting}
+If the lists don't alias then this is embarassingly parallel, can just do a type of tree reduce on the individual combinations.
+
 \subsubsection{Rotting Fruit}
 \begin{lstlisting}
-int orangesRotting(vector<vector<int>>& grid) {
+auto orangesRotting(vector<vector<int>>& grid) -> int {
     const auto n = static_cast<int>(grid.size());
     const auto m = static_cast<int>(grid[0].size());
 
@@ -1616,6 +1655,33 @@ for(const auto num : nums) {
     best_sum = std::max(best_sum, current_sum);
 }
 return best_sum;
+\end{lstlisting}
+
+\subsubsection{Maximum Product Subarray}
+This is a variation on the "Maximum Subarray" problem where we consider products. This case is a bit more tricky for two reasons:
+\begin{itemize}
+    \item Products with 0 become 0
+    \item We must also track rolling min because product with negative number makes larger number MORE negative than smaller number (assuming both are positive)
+\end{itemize}
+
+\begin{lstlisting}
+auto max_product_subarray(const std::vector<int>& nums) -> int {
+    auto max_prod = nums[0];
+    auto min_prod = nums[0];
+    auto best_prod = nums[0];
+
+    for(auto i = 1zu; i < nums.size(); ++i) {
+        const auto x = nums[i];
+
+        if(x < 0) std::swap(max_prod, min_prod);
+
+        max_prod = std::max(max_prod * x, x);
+        min_prod = std::min(min_prod * x, x);
+
+        best_prod = std::max(best_prod, max_prod);
+    }
+    return best_prod;
+}
 \end{lstlisting}
 
 \subsubsection{Median of Two Circularly Sorted Logs}
