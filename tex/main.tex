@@ -1,72 +1,6 @@
 \documentclass{article}
 
-\usepackage[hidelinks, bookmarks=false]{hyperref}
-\urlstyle{same}
-
-\usepackage{fontspec}
-\usepackage{array}
-\usepackage{float}
-
-\setmonofont[
-  Path=fonts/,
-  BoldFont=MonaspaceKrypton-Bold.otf,
-  ItalicFont=MonaspaceKrypton-Italic.otf,
-  BoldItalicFont=MonaspaceKrypton-BoldItalic.otf
-]{MonaspaceKrypton-Regular.otf}
-
-\usepackage{amsmath, amssymb, amsthm}
-
-\usepackage{graphicx}
-\graphicspath{{images/}}
-
-\usepackage[
-  top=1cm,
-  left=1cm,
-  right=1cm,
-  bottom=2cm,
-  footskip=0.7cm
-]{geometry}
-
-\usepackage{listings}
-\usepackage{xcolor}
-
-\definecolor{lstbg}{RGB}{248,248,248}
-\definecolor{lstframe}{RGB}{220,220,220}
-\definecolor{lstkeyword}{RGB}{0,92,197}
-\definecolor{lstcomment}{RGB}{0,128,0}
-\definecolor{lststring}{RGB}{163,21,21}
-\definecolor{lstnumber}{RGB}{120,120,120}
-
-\lstdefinestyle{cppstyle}{
-  language=cpp,
-  backgroundcolor=\color{lstbg},
-  frame=single,
-  rulecolor=\color{lstframe},
-  frameround=tttt,
-  basicstyle=\ttfamily\small,
-  keywordstyle=\color{lstkeyword}\bfseries,
-  commentstyle=\color{lstcomment}\itshape,
-  stringstyle=\color{lststring},
-  numberstyle=\tiny\color{lstnumber},
-  numbers=left,
-  stepnumber=1,
-  numbersep=8pt,
-  showstringspaces=false,
-  breaklines=true,
-  breakatwhitespace=true,
-  columns=fullflexible,
-  keepspaces=true,
-  tabsize=4,
-  upquote=true
-}
-
-\lstdefinelanguage{cpp}{
-  language=[11]C++,
-  morekeywords={concept,consteval,constinit,co_await,co_return,co_yield,requires},
-  sensitive=true
-}
-
-\lstset{style=cppstyle}
+\input{tex/preamble}
 
 \title{C++ Cheatsheet}
 \author{Daniel Sinkin}
@@ -1252,6 +1186,35 @@ and \texttt{std::weak\_ptr} holds a pointer to a ControlBlock, \texttt{std::shar
 \newpage{}
 \section{Interview Specifics}
 \subsection{Tricks}
+\subsubsection{Custom Hasher}
+Suppose you want to use something like the following as a key for a \texttt{std::unordered\_map}:
+\begin{lstlisting}
+struct MyStruct {
+    int val;
+    u32 iter;
+    usize idx;
+
+    [[nodiscard]] auto operator==(const MyStruct& other) const noexcept -> bool {
+        return (val == other.val) && (iter == other.iter) && (idx == other.idx);
+    }
+};
+\end{lstlisting}
+There is no built-in hash-combiner in the C++ STL, so you have to write it yourself, a good enough hash mixing is the following:
+\begin{lstlisting}
+struct MyHasher {
+    [[nodiscard]] auto operator()(const MyStruct& k) const noexcept -> usize {
+        const auto h1 = std::hash<int>{}(k.val);
+        const auto h2 = std::hash<u32>{}(k.iter);
+        const auto h3 = std::hash<usize>{}(k.idx);
+        return h1 ^ (h2 << 1) ^ (h3 << 2);
+    }
+};
+\end{lstlisting}
+then you can use your map with
+\begin{lstlisting}
+std::unordered_map<MyStruct, int, MyHasher> memo_{};
+\end{lstlisting}
+
 \subsubsection{2 Pointer Palindrome iteration}
 To count up all the palindromes in a string we you can sweep center index \texttt{i} left to right and check for odd palindromes
 \[
@@ -1515,6 +1478,31 @@ any subarray sum can be computed in constant time via
 \sum_{j=i}^{k} x_j = S(k) - S(i-1).
 \]
 \subsection{Problems}
+\subsubsection{Longest increasing subsequence}
+Given an array of numbers you want to find the length of the longest increasing subsequence. The fancy solution (called Patience Sorting) for that is to use binary search
+\begin{lstlisting}
+auto longest_increasing_subsequence(const std::vector<int>& xs) -> int {
+    std::vector<int> tails(xs.size());
+    for(const x : xs) {
+        auto it = std::lower_bound(tails.begin(), tails.end(), x);
+
+        if(it == tails.end()) {
+            tails.push_back(x);
+        } else {
+            *it = x;
+        }
+    }
+    return static_cast<int>(tails.size());
+}
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\linewidth]{PatienceSorting.png}\\[0.3em]
+    \caption{Patience Sort}
+    \label{fig:patience sorting}
+\end{figure}
+
 \subsubsection{Unique Paths}
 This is basically THE intro DP / memoization problem. Suppose you start at \texttt{(0, 0)} and you can only go to the right or to the bottom. How many unique paths are there to get to \texttt{(m, n)}?
 

@@ -1,0 +1,81 @@
+% tex/preamble.tex
+\usepackage{fontspec}
+
+\setmonofont[
+  Path=fonts/,
+  BoldFont=MonaspaceKrypton-Bold.otf,
+  ItalicFont=MonaspaceKrypton-Italic.otf,
+  BoldItalicFont=MonaspaceKrypton-BoldItalic.otf
+]{MonaspaceKrypton-Regular.otf}
+
+\usepackage[
+  top=1cm,
+  left=1cm,
+  right=1cm,
+  bottom=2cm,
+  footskip=0.7cm
+]{geometry}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+
+\usepackage{graphicx}
+\graphicspath{{images/}}
+\usepackage{float}
+
+\usepackage[hidelinks]{hyperref}
+
+\usepackage{xcolor}
+\usepackage{listings}
+
+\definecolor{lstbg}{RGB}{248,248,248}
+\definecolor{lstframe}{RGB}{220,220,220}
+\definecolor{lstkeyword}{RGB}{0,92,197}
+\definecolor{lstcomment}{RGB}{0,128,0}
+\definecolor{lststring}{RGB}{163,21,21}
+\definecolor{lstnumber}{RGB}{120,120,120}
+
+\lstdefinelanguage{cpp}{
+  language=[11]C++,
+  morekeywords={
+    concept,consteval,constinit,
+    co_await,co_return,co_yield,
+    requires
+  },
+  sensitive=true
+}
+
+\lstdefinestyle{cppstyle}{
+  language=cpp,
+  backgroundcolor=\color{lstbg},
+  frame=single,
+  rulecolor=\color{lstframe},
+  frameround=tttt,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{lstkeyword}\bfseries,
+  commentstyle=\color{lstcomment}\itshape,
+  stringstyle=\color{lststring},
+  numberstyle=\tiny\color{lstnumber},
+  numbers=left,
+  stepnumber=1,
+  numbersep=8pt,
+  showstringspaces=false,
+  breaklines=true,
+  breakatwhitespace=true,
+  columns=fullflexible,
+  keepspaces=true,
+  tabsize=4,
+  upquote=true
+}
+
+\lstset{style=cppstyle}
+
+\usepackage{microtype}
+\usepackage{enumitem}
+\setlist{nosep}
+
+\hypersetup{
+  pdftitle={C++ Cheatsheet},
+  pdfauthor={Daniel Sinkin}
+}
