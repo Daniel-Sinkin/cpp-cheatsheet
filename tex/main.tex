@@ -1515,6 +1515,58 @@ any subarray sum can be computed in constant time via
 \sum_{j=i}^{k} x_j = S(k) - S(i-1).
 \]
 \subsection{Problems}
+\subsubsection{Rotting Fruit}
+\begin{lstlisting}
+int orangesRotting(vector<vector<int>>& grid) {
+    const auto n = static_cast<int>(grid.size());
+    const auto m = static_cast<int>(grid[0].size());
+
+    auto n_fresh = 0;
+    std::queue<Pos> rotten_current_step{};
+    std::queue<Pos> rotten_next_step{};
+    for(auto y = 0; y < n; ++y) {
+        for(auto x = 0; x < m; ++x) {
+            const auto cell = grid[y][x];
+            if(cell == k_fresh) {
+                ++n_fresh;
+            } else if (cell == k_rotten) {
+                rotten_current_step.push({y, x});
+            }
+        }
+    }
+
+    const auto process_neighbor = [&](int y, int x) {
+        if(y < 0 || y >= n || x < 0 || x >= m) return;
+        if(grid[y][x] != k_fresh) return;
+        grid[y][x] = k_rotten;
+        --n_fresh;
+        rotten_next_step.push({y, x});
+    };
+    auto time = 0;
+    while(true) {
+        while(!rotten_current_step.empty()) {
+            const auto [y, x] = rotten_current_step.front();
+            rotten_current_step.pop();
+
+            process_neighbor(y, x + 1);
+            process_neighbor(y, x - 1);
+            process_neighbor(y + 1, x);
+            process_neighbor(y - 1, x);
+        }
+        if(rotten_next_step.empty()) {
+            break;
+        }
+        std::swap(rotten_current_step, rotten_next_step);
+        ++time;
+    }
+    if(n_fresh > 0) {
+        return k_fruit_remain_at_end;
+    }
+    return time;
+}
+\end{lstlisting}
+
+
 \subsection{Clone Graph}
 Suppose you are given a graph node \texttt{Node*}, adjacency is encoded by a per-element \texttt{std::vector<Node*>}. We are interested in making a deep copy of that graph.
 
