@@ -2169,9 +2169,9 @@ struct Entity {
 };
 \end{lstlisting}
 If we store our entities as
-$$
+\begin{lstlisting}
 std::vector<Entity> entities{};
-$$
+\end{lstlisting}
 we have an (A)rray (o)f (S)tructs.
 
 If we now want to update the position of all entites (for example by shifting them all, or syncing the transform with the underlying physics representation) then we'd have to load at least one \texttt{CacheLine} per entity which is a lot of wasted loading if we are only interested in the transform, for example
