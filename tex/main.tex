@@ -1337,6 +1337,10 @@ and the minimum of these is the $k$-th largest overall.
 You can use macros to quickly print out the names value of expressions with the following macro. Note that you should always output to \texttt{std::cerr} (I think \texttt{std::clog}) as \texttt{std::cout} is used to evaluate the result.
 \begin{lstlisting}
 #define DS_DBG(x) std::cerr << #x << " = " << (x) << '\n';
+#define DS_DBG2(x, y) std::cerr << #x << " = " << (x) << ", " << #y << " = " << (y) << '\n';
+
+#define DS_DBG_t1(x) std::cerr << "\t" << #x << " = " << (x) << '\n';
+#define DS_DBG_t2(x) std::cerr << "\t\t" << #x << " = " << (x) << '\n';
 \end{lstlisting}
 \subsubsection{Rolling Average}
 \[
@@ -1572,6 +1576,13 @@ auto merge2(ListNode* a, ListNode* b) -> ListNode* {
     return dummy;
 }
 \end{lstlisting}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\linewidth]{Merge2.png}\\[0.3em]
+    \caption{Merge two sorted linked lists}
+    \label{fig:merge-2}
+\end{figure}
+
 This can then easily be extended to merging arbitrarily many linked lists:
 \begin{lstlisting}
 auto mergeK(std::vector<ListNode*> lists) -> ListNode* {
