@@ -1482,6 +1482,14 @@ any subarray sum can be computed in constant time via
 \sum_{j=i}^{k} x_j = S(k) - S(i-1).
 \]
 \subsection{Problems}
+\subsubsection{Longest common subsequence}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\linewidth]{LongestCommonSubsequence.png}\\[0.3em]
+    \caption{Longest Common Subsequence}
+    \label{fig:problem-longest-common-subsequence}
+\end{figure}
+
 \subsubsection{Longest increasing subsequence}
 Given an array of numbers you want to find the length of the longest increasing subsequence. The fancy solution (called Patience Sorting) for that is to use binary search
 \begin{lstlisting}
@@ -1504,7 +1512,7 @@ auto longest_increasing_subsequence(const std::vector<int>& xs) -> int {
     \centering
     \includegraphics[width=0.7\linewidth]{PatienceSorting.png}\\[0.3em]
     \caption{Patience Sort}
-    \label{fig:patience sorting}
+    \label{fig:problem-patience-sorting}
 \end{figure}
 
 \subsubsection{Unique Paths}
