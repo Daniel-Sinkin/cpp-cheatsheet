@@ -2272,14 +2272,254 @@ It is important to check if those have hardware support (i.e. work lock free), t
     \texttt{std::atomic<T>::is\_always\_lock\_free}
 \]
 
+\subsubsection{Memory Ordering (\texttt{std::memory\_order})}
+The C++ memory model defines how memory accesses (reads and writes) from multiple threads can be observed relative to each other. By default, the compiler and CPU are free to reorder memory operations for performance; \texttt{std::memory\_order} gives the programmer control over these guarantees.
 
+\begin{itemize}
+    \item \texttt{memory\_order\_relaxed}: No ordering guarantees beyond atomicity. The operation is atomic but can be freely reordered with respect to other reads and writes. Useful for counters or flags where only the value itself matters, not the ordering relative to other data.
+    \item \texttt{memory\_order\_acquire}: A \emph{load} (read) with acquire semantics. Guarantees that no memory reads or writes \emph{after} this load can be reordered \emph{before} it. Typically used when reading a flag or lock to ensure that all data written by the releasing thread is visible.
+    \item \texttt{memory\_order\_release}: A \emph{store} (write) with release semantics. Guarantees that no memory reads or writes \emph{before} this store can be reordered \emph{after} it. Typically used when setting a flag or releasing a lock so that all prior writes are visible to the acquiring thread.
+    \item \texttt{memory\_order\_acq\_rel}: Combines acquire and release: a read-modify-write operation that is both an acquire (for the read part) and a release (for the write part).
+    \item \texttt{memory\_order\_seq\_cst}: Sequentially consistent ordering (the default). All threads observe all \texttt{seq\_cst} operations in the same total order. Strongest guarantee, easiest to reason about, but potentially most expensive.
+\end{itemize}
 
+The fundamental pattern is the \textbf{acquire--release pair}: a store with \texttt{memory\_order\_release} in one thread \emph{synchronises with} a load of the same atomic variable with \texttt{memory\_order\_acquire} in another thread. All writes that happened before the release are guaranteed to be visible after the acquire.
+
+\subsection{Thread Utilities (\texttt{std::this\_thread})}
+\texttt{std::this\_thread::yield()} hints to the OS scheduler that the current thread is willing to give up its remaining time slice, allowing other threads to run. It does \emph{not} guarantee a context switch; the scheduler may immediately reschedule the same thread. Useful in spinlocks to avoid burning CPU while waiting.
+
+\texttt{std::this\_thread::sleep\_for(duration)} suspends the current thread for \emph{at least} the specified duration (\texttt{std::chrono} based). Unlike \texttt{yield}, this is a hard pause; the thread will not be scheduled until the duration has elapsed (plus scheduling jitter).
+
+\begin{lstlisting}[language=cpp,caption={std::this\_thread utilities}]
+std::this_thread::yield();                                  // hint: give up time slice
+std::this_thread::sleep_for(std::chrono::milliseconds(10)); // sleep >= 10ms
+\end{lstlisting}
 
 \subsection{Multiple Threads}
 \subsection{Multiple Processes}
 \subsubsection{OpenMP}
-\subsection{Data Structures}
+\subsection{Concurrent Data Structures}
+\subsubsection{Mutex (Spinlock)}
+The only tricky part of implementing a basic mutex (spinlock) is keeping the acquire--release pair in mind regarding memory ordering; the actual logic is minimal. This tests the developer's understanding of the memory model (and that \texttt{.test()} is preferable to \texttt{.test\_and\_set()} for spinlocks, which on \texttt{atomic\_flag} is only possible since C++20).
+
+The skeleton is straightforward: \texttt{flag\_} is an \texttt{std::atomic\_flag}, the only atomic type guaranteed to be lock-free. Brace initialisation (value-initialised to clear) is valid since C++20. \texttt{lock()} spins until it acquires the flag, \texttt{unlock()} clears it. Unlocking an already-free mutex mirrors STL behaviour (no-op / no UB). Copy and move are deleted because a mutex represents a unique synchronisation point; copying or moving it would be meaningless. The destructor is explicitly defaulted since we declare the other special members.
+
+\begin{lstlisting}[language=cpp,caption={Mutex skeleton}]
+class Mutex
+{
+public:
+    ~Mutex() = default;
+
+    Mutex(const Mutex&) = delete;
+    Mutex& operator=(const Mutex&) = delete;
+    Mutex(Mutex&&) = delete;
+    Mutex& operator=(Mutex&&) = delete;
+
+    void lock();
+    void unlock();
+private:
+    std::atomic_flag flag_{};
+};
+\end{lstlisting}
+
+\textbf{\texttt{lock()}}: \texttt{test\_and\_set} is a read-modify-write operation (relatively expensive) that atomically sets the flag and returns the old value. We use \texttt{memory\_order\_acquire} so that, once we succeed, all writes made by the previous holder before their release-store are visible to us. If the flag was already set (lock held by someone else), we enter the spin body: rather than immediately retrying the expensive \texttt{test\_and\_set}, we probe with \texttt{test()} which is a read-only operation (cheaper, no cache-line bouncing). \texttt{memory\_order\_relaxed} suffices here because we are not yet acquiring; we are just waiting for the value to change. If the flag is still set we yield the time slice to avoid burning CPU.
+
+\begin{lstlisting}[language=cpp,caption={Mutex::lock}]
+void lock()
+{
+    while(flag_.test_and_set(std::memory_order_acquire)) {
+        if(flag_.test(std::memory_order_relaxed)) {
+            std::this_thread::yield();
+        }
+    }
+}
+\end{lstlisting}
+
+\textbf{\texttt{unlock()}}: \texttt{clear} is a store that resets the flag. We use \texttt{memory\_order\_release} so that all writes we made while holding the lock are visible to the next thread that does an acquire-load of the same flag.
+
+\begin{lstlisting}[language=cpp,caption={Mutex::unlock}]
+void unlock()
+{
+    flag_.clear(std::memory_order_release);
+}
+\end{lstlisting}
+
 \subsubsection{SPSC (Single Producer Single Consumer)}
+A \texttt{DataWrapper<T>} pairs each work item with a sentinel flag signalling the last chunk. The \texttt{SPSC} class is templated on the data type and a callback invoked per item. It is non-copyable and non-movable since it owns a running thread. The destructor sets \texttt{exit\_on\_empty\_} as a fallback (in case the sentinel was never pushed) and joins the consumer thread (\texttt{std::jthread} does not require a \texttt{joinable()} check).
+
+\begin{lstlisting}[language=cpp,caption={SPSC skeleton}]
+template <typename T>
+struct DataWrapper
+{
+    T data{};
+    bool is_last_chunk{false};
+};
+
+template <typename T, typename Callback>
+class SPSC
+{
+public:
+    SPSC(Callback callback);
+    ~SPSC();
+
+    SPSC(const SPSC&) = delete;
+    SPSC& operator=(const SPSC&) = delete;
+    SPSC(SPSC&&) = delete;
+    SPSC& operator=(SPSC&&) = delete;
+
+    void PushWork(const DataWrapper<T>& wrapper);
+private:
+    Callback callback_;
+    std::queue<T> data_{};
+    std::mutex mutex_data_{};
+    std::jthread consumer_thread_;
+    std::atomic<bool> exit_on_empty_{false};
+
+    void Consume();
+};
+\end{lstlisting}
+
+The constructor stores the callback (moved in) and immediately launches the consumer thread. The destructor sets the exit flag and joins.
+
+\begin{lstlisting}[language=cpp,caption={SPSC constructor and destructor}]
+SPSC(Callback callback)
+    : callback_(std::move(callback))
+    , consumer_thread_([this]{ Consume(); })
+{}
+
+~SPSC()
+{
+    exit_on_empty_ = true;
+    consumer_thread_.join();
+}
+\end{lstlisting}
+
+\textbf{\texttt{PushWork}}: Locks the queue, pushes the data, and if this is the last chunk, sets the exit flag so the consumer knows to drain and stop.
+
+\begin{lstlisting}[language=cpp,caption={SPSC::PushWork}]
+void PushWork(const DataWrapper<T>& wrapper)
+{
+    std::scoped_lock sl{mutex_data_};
+    if(wrapper.is_last_chunk) {
+        exit_on_empty_ = true;
+    }
+    data_.push(wrapper.data);
+}
+\end{lstlisting}
+
+\textbf{\texttt{Consume}}: The consumer loop locks the queue, and if there is work it moves the front element out and pops. The lock is released \emph{before} invoking the callback so the producer is not blocked while the (potentially slow) callback runs. If the queue is empty and the exit flag is set, we break. Otherwise we yield to avoid busy-spinning on an empty queue.
+
+\begin{lstlisting}[language=cpp,caption={SPSC::Consume}]
+void Consume()
+{
+    while(true) {
+        std::unique_lock ulk{mutex_data_};
+        if(!data_.empty()) {
+            auto item = std::move(data_.front());
+            data_.pop();
+            ulk.unlock();
+            callback_(item);
+        } else if(exit_on_empty_) {
+            break;
+        } else {
+            ulk.unlock();
+            std::this_thread::yield();
+        }
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Thread Pool}
+A thread pool pre-spawns a fixed number of worker threads that pull tasks from a shared queue. \texttt{WorkT} is a type alias for \texttt{std::function<void()>}. The pool is non-copyable (owning threads); move is also deleted for simplicity. The default constructor uses \texttt{std::thread::hardware\_concurrency()} as the thread count.
+
+\begin{lstlisting}[language=cpp,caption={ThreadPool skeleton}]
+using WorkT = std::function<void()>;
+
+class ThreadPool
+{
+public:
+    ThreadPool();
+    ThreadPool(std::size_t count);
+    ~ThreadPool();
+
+    ThreadPool(const ThreadPool&) = delete;
+    ThreadPool& operator=(const ThreadPool&) = delete;
+    ThreadPool(ThreadPool&&) = delete;
+    ThreadPool& operator=(ThreadPool&&) = delete;
+
+    size_t ThreadCount() const;
+
+    template <typename Work>
+    void submit(Work work);
+private:
+    std::atomic<bool> stop_{false};
+    std::mutex mutex_;
+    std::vector<std::jthread> threads_;
+    std::queue<WorkT> work_queue_;
+
+    auto Work() -> void;
+};
+\end{lstlisting}
+
+The default constructor delegates to the parameterised one. Each thread runs the \texttt{Work()} loop. The destructor sets the stop flag and joins all threads; \texttt{std::jthread} does not require a \texttt{joinable()} check.
+
+\begin{lstlisting}[language=cpp,caption={ThreadPool constructors and destructor}]
+ThreadPool() : ThreadPool(std::thread::hardware_concurrency()) {}
+
+ThreadPool(std::size_t count)
+{
+    threads_.reserve(count);
+    for (std::size_t i{0zu}; i < count; ++i) {
+        threads_.emplace_back([this] { Work(); });
+    }
+}
+
+~ThreadPool()
+{
+    stop_ = true;
+    for (auto& thread : threads_) {
+        thread.join();
+    }
+}
+\end{lstlisting}
+
+\textbf{\texttt{submit}}: Locks the queue and pushes a type-erased \texttt{std::function<void()>} wrapping the caller's work. Templated so any callable can be submitted.
+
+\begin{lstlisting}[language=cpp,caption={ThreadPool::submit}]
+template <typename Work>
+void submit(Work work)
+{
+    std::scoped_lock sl{mutex_};
+    work_queue_.push([work] { work(); });
+}
+\end{lstlisting}
+
+\textbf{\texttt{Work}}: Each worker thread runs this loop. It locks the queue, and if there is a task it moves it out and pops. The lock is \emph{not} held during execution (the \texttt{scoped\_lock} scope ends before the call). Exceptions from tasks are swallowed so one bad task does not kill a worker thread. If no task was available we yield to avoid busy-spinning.
+
+\begin{lstlisting}[language=cpp,caption={ThreadPool::Work}]
+auto Work() -> void
+{
+    std::optional<WorkT> func{};
+    while (!stop_) {
+        if (!func) {
+            std::scoped_lock sl{mutex_};
+            if (!work_queue_.empty()) {
+                func = std::move(work_queue_.front());
+                work_queue_.pop();
+            }
+        }
+        if (func) {
+            try {
+                (*func)();
+            } catch (...) {}
+            func = std::nullopt;
+        } else {
+            std::this_thread::yield();
+        }
+    }
+}
+\end{lstlisting}
+
 \subsubsection{SPMC (Single Producer Multiple Consumer)}
 \subsubsection{MPSC (Multiple Producer Single Consumer)}
 \subsubsection{MPMC (Multiple Producer Multiple Consumer)}
