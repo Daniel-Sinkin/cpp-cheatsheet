@@ -65,26 +65,26 @@ Mutex m1{}, m2{};
 \subsubsection{std::expected}
 Allows for functional / Rust style errors as values.
 
-\begin{lstlisting}[language=cpp,caption={C++26: Anonymous values}]
+\begin{lstlisting}[language=cpp,caption={C++23: std::expected}]
 enum class MyError {
-    negative_number;
-    zero_division;
-}
+    negative_number,
+    zero_division,
+};
 
-std::expected<float, PositiveDivisionError> my_div(float a, float b) {
+std::expected<float, MyError> my_div(float a, float b) {
     if((a * b) <= 0.0f) {
-        return std::unexpected{MyError:negative_number};
+        return std::unexpected{MyError::negative_number};
     }
     if(b == 0.0f) {
-        return std::unexpected{MyError:zero_division};
+        return std::unexpected{MyError::zero_division};
     }
     return a / b;
 }
 
 int main() {
-    auto res = my_div(5.0, 3.0);
+    auto res = my_div(5.0f, 3.0f);
     if(!res) {
-        switch(res.err()) {
+        switch(res.error()) {
             case MyError::negative_number: {/*...*/}
             case MyError::zero_division: {/*...*/}
         }
@@ -118,7 +118,7 @@ std::string s{std::format("x = {:.2f}", x)}; // s == "x = 12.52"
 
 \subsubsection{Concepts}
 Compile time constraints on templates, reducing the need for SFINAE boilerplate
-\begin{lstlisting}[language=cpp,caption={std::format}]
+\begin{lstlisting}[language=cpp,caption={Concepts}]
 template <std::integral T>
 T add(T a, T b) { return a + b; }
 \end{lstlisting}
@@ -134,7 +134,7 @@ co_yield value;
 Adoption of those is horrible so far.
 
 \subsubsection{Calendar support for std::chrono}
-\begin{lstlisting}[language=cpp,caption={Pre-C++17: std::array without CTAD}]
+\begin{lstlisting}[language=cpp,caption={C++20: Calendar support for std::chrono}]
 using namespace std::chrono;
 auto zt = zoned_time{"Europe/Berlin", system_clock::now()};
 \end{lstlisting}
@@ -248,7 +248,7 @@ x; // This id-expression is an L value
 1 + 1; // prvalue (of type int)
 
 struct Foo {/*...*/}
-Foo foo{}; // declaration not an expression, so no value cateogry
+Foo foo{}; // declaration not an expression, so no value category
 
 foo; // lvalue
 f(foo); // passes an L value 
@@ -318,7 +318,7 @@ class Foo {
 \end{lstlisting}
 
 \subsubsection{Rule of Zero}
-Given that implementingi the Rule of Five is annoying and creates a lot of boilerplate one should avoid that whenever possible, that is the Rule of Zero.
+Given that implementing the Rule of Five is annoying and creates a lot of boilerplate one should avoid that whenever possible, that is the Rule of Zero.
 
 \subsubsection{RAII (Resource Acquisition is Initialisation)}
 In my opinion this is a terrible name and should instead be CADR (Constructor Acquires Destructor Releases). It is a type of scope based automatic resource cleanup, the main idea is that when you invoke the constructor you obtain some resource which you hold for the entire lifetime of that class and once that lifetime has passed (on leaving scope) the resource gets automatically released. This is for example how one can use \texttt{std::vector} to avoid having to manually call \texttt{new} and \texttt{delete}.
@@ -398,7 +398,7 @@ private:
     Data data_{};
 };
 \end{lstlisting}
-Now we want to show three different cases, one where NRVo can't happen (different named variables of the same type get returned)
+Now we want to show three different cases, one where NRVO can't happen (different named variables of the same type get returned)
 \begin{lstlisting}
 auto no_nrvo(bool return_a) -> TrackMemory {
     TrackMemory a{}, b{};
@@ -443,7 +443,7 @@ struct alignas(16) EmptyAligned {};
 class NoEBO {
 private:
     double data_{};
-    EmptyAligned empty_interals_{};
+    EmptyAligned empty_internals_{};
 };
 
 class WithEBO {
@@ -471,7 +471,7 @@ std::vector<int> c{};
 c.reserve(a.size() + b.size());
 
 auto it_a = a.begin();
-auto it_b = b.begin()
+auto it_b = b.begin();
 while(it_a != a.end() && it_b != b.end()) {
     if(*it_a <= *it_b) {
         c.push_back(*it_a);
@@ -496,9 +496,9 @@ When you want to delete an object in the middle (or beginning) of a vector you f
 
 A common trick to avoid this is to keep a list of tombstones which are boolean values denoting if that value is deleted, and when you access or iterate you simply skip those elements.
 
-If you occassionally pop elements off the back it can be advantageous to just keep popping as long as there are tombstone objects on the top, or if you have downtime in your program you could do cleanup (batching the removal is much faster) or just keep the tombstoned values if the memory cost is not too high.
+If you occasionally pop elements off the back it can be advantageous to just keep popping as long as there are tombstone objects on the top, or if you have downtime in your program you could do cleanup (batching the removal is much faster) or just keep the tombstoned values if the memory cost is not too high.
 \begin{lstlisting}
-struct DeleteableInt{
+struct DeletableInt{
     int value{};
     bool is_deleted{false};
 };
@@ -513,7 +513,7 @@ for(auto i = 0; i < vec.size(); ++i) {
 \end{lstlisting}
 
 \subsubsection{Scope Guard / Defer Pattern}
-RAII wrappers can also be useful when trying to do some post-scope cleanup or operation, as a type of soft `texttt{defer}`.  For example I use 
+RAII wrappers can also be useful when trying to do some post-scope cleanup or operation, as a type of soft \texttt{defer}.  For example I use 
 \begin{lstlisting}
 using Clock = std::chrono::steady_clock;
 using TimePoint = Clock::time_point;
@@ -548,17 +548,17 @@ for (std::size_t i = v.size(); i-- > 0; )
 
 The range (C++20) based alternative to this is to use
 \begin{lstlisting}
-\texttt{for (auto\& x : std::views::reverse(v)) {...}}
+for (auto& x : std::views::reverse(v)) {/*...*/}
 \end{lstlisting}
 
 
 \subsection{ODR (One Definition Rule)}
-Use the \texttt{extern} keyword if you want to decalre a variable but not define it to avoid ODR. Since C++17 you can (and should) use inline for variables instead.
+Use the \texttt{extern} keyword if you want to declare a variable but not define it to avoid ODR. Since C++17 you can (and should) use inline for variables instead.
 
 A very subtle ODR bug can occur when you compile some files with debug symbols set and some without.
 
 \subsection{SIOF (Static Initialisation Order Fiasco)}
-When you have two non-local objects (e.g. globals or function-local statics) which have dynamic initialisation (run code in their constructors) which live in different translation units (.cpp files) then the initialisation order between them is not specificied (standard only guarantees it within one translation unit (top-to-bottom)).
+When you have two non-local objects (e.g. globals or function-local statics) which have dynamic initialisation (run code in their constructors) which live in different translation units (.cpp files) then the initialisation order between them is not specified (standard only guarantees it within one translation unit (top-to-bottom)).
 \begin{lstlisting}[caption={a.cpp}]
 extern std::string g_name;
 
@@ -578,8 +578,69 @@ Because \texttt{g\_greeting} depends on \texttt{g\_name} it might not have been 
 \subsubsection{Variadic Templates}
 \subsubsection{Template Metaprogramming}
 
+\subsubsection{Concepts (C++20)}
+Concepts are named compile-time predicates that constrain template parameters. They replace SFINAE for most use cases and produce much clearer error messages. A concept is defined with \texttt{concept} and evaluates to \texttt{true} or \texttt{false} at compile time.
+
+\begin{lstlisting}[language=cpp,caption={Defining and using concepts}]
+template <typename T>
+concept Hashable = requires(T a) {
+    { std::hash<T>{}(a) } -> std::convertible_to<std::size_t>;
+};
+
+template <typename T>
+concept SmallType = (sizeof(T) <= sizeof(char*));
+\end{lstlisting}
+
+Concepts can be used in four equivalent ways to constrain a template:
+\begin{lstlisting}[language=cpp,caption={Four ways to apply a concept}]
+// 1. requires-clause after template parameters
+template <typename T> requires Hashable<T>
+void foo(T x);
+
+// 2. trailing requires-clause
+template <typename T>
+void foo(T x) requires Hashable<T>;
+
+// 3. constrained template parameter
+template <Hashable T>
+void foo(T x);
+
+// 4. abbreviated function template (terse syntax)
+void foo(Hashable auto x);
+\end{lstlisting}
+
+\subsubsection{Partial Specialisation with Concepts}
+Partial specialisation allows a class template to have different implementations for different subsets of its type parameters. Since C++20, \texttt{requires}-clauses can be used to select between partial specialisations based on concept constraints. The compiler picks the most constrained matching specialisation.
+
+The pattern is: declare a primary template (which can be left incomplete), then provide partial specialisations guarded by complementary \texttt{requires}-clauses. This is used in the \texttt{optional} implementation to select inline vs heap storage based on type size.
+
+\begin{lstlisting}[language=cpp,caption={Constrained partial specialisation pattern}]
+// Primary template: declared but not defined
+template <typename T>
+class Widget;
+
+// Specialisation for small types: inline storage
+template <typename T>
+    requires(SmallType<T>)
+class Widget<T> {
+    alignas(T) std::byte data_[sizeof(T)];
+};
+
+// Specialisation for large types: heap storage
+template <typename T>
+    requires(!SmallType<T>)
+class Widget<T> {
+    T* data_{};
+};
+
+static_assert(sizeof(Widget<int>) <= 16);  // inline
+// Widget<std::array<int, 1024>> uses heap
+\end{lstlisting}
+
+The key rules for partial specialisation: the specialisations must be strictly more constrained than the primary template, and for any given \texttt{T} exactly one specialisation must match (otherwise ambiguity is a compile error). Negating a concept with \texttt{!} ensures the two branches are mutually exclusive.
+
 \newpage
-\section{STL (Standard Templating Library)}
+\section{STL (Standard Template Library)}
 \subsection{Iterators}
 \subsubsection{Iterator Categories}
 
@@ -644,7 +705,7 @@ First introduced in C++20, based on Eric Niebler's \texttt{Range-v3} library.
 For example the Unsigned reverse iteration idiom (\texttt{i-- > 0}) can be implemented using ranges instead:
 
 \begin{lstlisting}
-\texttt{for (auto\& x : std::views::reverse(v)) \{...\}}
+for (auto& x : std::views::reverse(v)) {/*...*/}
 \end{lstlisting}
 
 \subsubsection{Range Algorithms}
@@ -663,7 +724,7 @@ The core operation on a vector is \texttt{push\_back} which takes an object and 
 
 If you want to delete an element you swap that position with \texttt{end\_} and reduce \texttt{end\_} by one.
 
-This is a famously badly named datastructure as it squats on the name of mathematicl elements of vector spaces and physics vectors. A better name would for example be DynamicArray.
+This is a famously badly named datastructure as it squats on the name of mathematical elements of vector spaces and physics vectors. A better name would for example be DynamicArray.
 
 \begin{lstlisting}[language=cpp,caption={Vector class}]
 template <typename T>
@@ -688,10 +749,10 @@ private:
 VectorTrivial() = default;
 explicit VectorTrivial(size_type n)
 { // Allocate with fixed capacity
-    start_ = static_cast<T*>(std::malloc(n_capacity * sizeof(T)));
+    start_ = static_cast<T*>(std::malloc(n * sizeof(T)));
     if(!start_) {/*...*/}
     end_ = start_;
-    cap_ = start_ + n_capacity;
+    cap_ = start_ + n;
 }
 
 VectorTrivial(const Vector& other)
@@ -722,7 +783,7 @@ VectorTrivial& operator=(const Vector& other)
     }
 
     const auto n_elems = other.size();
-    const auto n_capacity = other.capacity();o
+    const auto n_capacity = other.capacity();
     
     auto new_start = static_cast<T*>(std::malloc(n_capacity * sizeof(T)));
     if(!new_start) { /* ... */ }
@@ -746,7 +807,7 @@ VectorTrivial& operator=(Vector&& other) noexcept
     std::free(start_);
     start_ = other.start_;
     end_ = other.end_;
-    cap_ = other.cap_
+    cap_ = other.cap_;
 
     other.start_ = nullptr;
     other.end_ = nullptr;
@@ -788,14 +849,15 @@ void push_back(T&& v)
 
 \subsubsection{Private API}
 \begin{lstlisting}
-// 2.0 on MSVC, 1.5 on GCC and Clang
+// 1.5 on MSVC, 2.0 on GCC and Clang
 constexpr double k_resize_factor = 2.0;
-constexpr double k_initial_capacity = 1;
+constexpr size_type k_initial_capacity = 8;
 {
     const auto n_elems = size();
     const auto old_cap = capacity();
-    const auto new_cap = old_cap * k_resize_factor;
-    const auto new_cap = (old_cap == 0) ? 8 : new_cap;
+    const auto new_cap = (old_cap == 0)
+        ? k_initial_capacity
+        : static_cast<size_type>(old_cap * k_resize_factor);
 
     void* new_mem = std::realloc(start_, new_cap * sizeof(T));
     if (!new_mem) { /* handle allocation failure */ }
@@ -845,8 +907,8 @@ UniquePtr(UniquePtr&& other) noexcept(/*Deleter must be noexcept moveable and mo
     : ptr_(other.release()), deleter_(std::move(other.deleter_)) {}
     
 UniquePtr& operator=(UniquePtr&& other) {
-    if(*this == other) {
-        return this;
+    if(this == &other) {
+        return *this;
     }
     if(ptr_) {
         deleter_(ptr_);
@@ -879,7 +941,7 @@ auto get() const -> pointer_type {
 \end{lstlisting}
 
 \subsubsection{Custom Deleter}
-For the unique pointer to be able to manage different types of resources it is important to offer an (optional) custom deleter, but also provide a default deleter (equivalent to \texttt{std::default\_delete}). Of course that has to be tempalted over the underlying type. There must be two overloads, one for arrays and one for non-arrays.
+For the unique pointer to be able to manage different types of resources it is important to offer an (optional) custom deleter, but also provide a default deleter (equivalent to \texttt{std::default\_delete}). Of course that has to be templated over the underlying type. There must be two overloads, one for arrays and one for non-arrays.
 \begin{lstlisting}
 template <class T>
 struct DefaultDelete {
@@ -900,132 +962,156 @@ struct DefaultDelete<T[]> {
 A free function which constructs the object and unique pointer together to avoid having to directly construct the object and then move it into a pointer. It is a variadic template that forwards arguments to the constructor of the underlying type. There are three different cases to consider, non-array pointers, array pointers with unknown bounds and array pointers with known bounds. We only want to support the first two.
 \begin{lstlisting}
 template <class T, class...Args>
-    requires (!std::is_array(T))
+    requires (!std::is_array_v<T>)
 auto make_unique(Args&&...args) -> UniquePtr<T> {
     return UniquePtr<T>(new T(std::forward<Args>(args)...));
 }
 
 template <class T, class...Args>
-    requires (std::is_array(T) && std::extent_v<T> == 0)
+    requires (std::is_array_v<T> && std::extent_v<T> == 0)
 auto make_unique(Args&&...args) -> UniquePtr<T> {
     using  U = std::remove_extent_t<T>;
     return UniquePtr<U>(new U[n]());
 }
 
 template <class T, class...Args>
-    requires (std::is_array(T) /*&& bounds side > 0*/)
+    requires (std::is_array_v<T> /*&& bounds side > 0*/)
 auto make_unique(Args&&...) -> UniquePtr<T> = delete;
 \end{lstlisting}
 
 \subsection{std::optional}
-This is a container that is used to either store a value or denote that absence of a value. Main idea is that unlike the pointer types it actually own its memory on the stack and we creat objects using placement new inside of a inner aligned memory buffer.
-\begin{lstlisting}
-template <class T>
-class Optional{
+This is a container that stores a value or denotes its absence. The standard implementation stores the object inline via placement new into an aligned byte buffer, avoiding heap allocation.
+
+This implementation uses constrained partial specialisation (see Templates section) to select between two strategies at compile time: small types ($\leq$ pointer size) are stored inline in an aligned byte buffer, while large types fall back to a heap pointer. Both specialisations share the same public interface but differ in storage layout. Copy and move are deleted for simplicity.
+
+\begin{lstlisting}[language=cpp,caption={SmallType concept and primary template}]
+template <typename T>
+concept SmallType = (sizeof(T) <= sizeof(char*));
+
+template <typename T>
+class optional; // declared but not defined; only specialisations are valid
+\end{lstlisting}
+
+\subsubsection{Small Type Specialisation (inline storage)}
+For types that fit in a pointer, we store the value directly in an aligned byte buffer. The skeleton shows the storage layout: an aligned byte array sized to \texttt{T} and a boolean flag.
+
+\begin{lstlisting}[language=cpp,caption={optional<T> skeleton for SmallType}]
+template <typename T>
+    requires(SmallType<T>)
+class optional<T> {
 public:
-    /*Rule of 5*/
-    /*Public API*/
+    optional(const optional&) = delete;
+    optional& operator=(const optional&) = delete;
+    optional(optional&&) = delete;
+    optional& operator=(optional&&) = delete;
+
+    optional() = default;
+    optional(T a);
+    ~optional();
+
+    [[nodiscard]] auto has_value() const noexcept -> bool;
+    [[nodiscard]] operator bool() const noexcept;
+    [[nodiscard]] auto value() const -> const T&;
+    [[nodiscard]] auto operator*() const -> const T&;
 private:
-    bool is_filled_{false};
-    alignas(T) std::byte storage[sizeof(T)];
-    /*Private API*/
+    alignas(T) std::byte data_[sizeof(T)];
+    bool present_{false};
 };
 \end{lstlisting}
 
-\subsubsection{Public API}
-\begin{lstlisting}
-auto release() -> void {
-    if(is_filled_) {
-        *ptr()->~T();
-        is_filled_ = false;
+\textbf{Constructor}: Uses placement new to construct \texttt{T} directly into the byte buffer. No heap allocation occurs.
+
+\begin{lstlisting}[language=cpp,caption={SmallType optional: constructor}]
+optional(T a) {
+    ::new (data_) T{a};
+    present_ = true;
+}
+\end{lstlisting}
+
+\textbf{Destructor}: Must manually invoke the destructor through a \texttt{reinterpret\_cast} since the object lives in raw storage, not a typed variable.
+
+\begin{lstlisting}[language=cpp,caption={SmallType optional: destructor}]
+~optional() {
+    if(present_) {
+        reinterpret_cast<T*>(data_)->~T();
     }
 }
-template <class...Args>
-auto emplace(Args...args) -> void {
-    release();
-    ::new (static_cast<void*>storage())
-        T(std::forward<Args>(args));
-    is_filled_ = true;
-}
-explicit bool() const noexcept {
-    return is_filled_;
-}
+\end{lstlisting}
+
+\textbf{Accessors}: \texttt{has\_value} and \texttt{operator bool} check the flag. \texttt{value} reinterprets the byte buffer back to \texttt{const T\&}, throwing if empty. \texttt{operator*} delegates to \texttt{value}.
+
+\begin{lstlisting}[language=cpp,caption={SmallType optional: accessors}]
 [[nodiscard]] auto has_value() const noexcept -> bool {
-    return is_filled_;
+    return present_;
 }
-[[nodiscard]] auto value() & -> T& {
-    return **ptr();
+[[nodiscard]] operator bool() const noexcept {
+    return has_value();
 }
-[[nodiscard]] auto value() const & -> const T& {
-    return **ptr();
+[[nodiscard]] auto value() const -> const T& {
+    if(!present_) {
+        throw std::runtime_error("no value");
+    }
+    return *reinterpret_cast<const T*>(data_);
 }
-[[nodiscard]] auto value() & -> T&& {
-    return **ptr();
-}
-[[nodiscard]] auto value() const & -> const T&& {
-    return **ptr();
+[[nodiscard]] auto operator*() const -> const T& {
+    return value();
 }
 \end{lstlisting}
 
-\subsubsection{Rule of 5}
-\begin{lstlisting}
-Optional() = default();
-Optional(const T& t) {
-    emplace(t);
+\subsubsection{Large Type Specialisation (heap storage)}
+For types larger than a pointer, we heap-allocate. Presence is indicated by a non-null pointer, so no separate boolean is needed.
+
+\begin{lstlisting}[language=cpp,caption={optional<T> skeleton for !SmallType}]
+template <typename T>
+    requires(!SmallType<T>)
+class optional<T> {
+public:
+    optional(const optional&) = delete;
+    optional& operator=(const optional&) = delete;
+    optional(optional&&) = delete;
+    optional& operator=(optional&&) = delete;
+
+    optional() = default;
+    optional(T a);
+    ~optional();
+
+    [[nodiscard]] auto has_value() const noexcept -> bool;
+    [[nodiscard]] operator bool() const noexcept;
+    [[nodiscard]] auto value() const -> const T&;
+    [[nodiscard]] auto operator*() const -> const T&;
+private:
+    T* data_{};
+};
+\end{lstlisting}
+
+\textbf{Constructor and destructor}: The constructor heap-allocates a copy. The destructor simply calls \texttt{delete}, which is a no-op on \texttt{nullptr} so no guard is needed.
+
+\begin{lstlisting}[language=cpp,caption={Large optional: constructor and destructor}]
+optional(T a) {
+    data_ = new T{a};
 }
-Optional(T&& t) {
-    emplace(t);
-}
-Optional(const Optional& other) {
-    if(other.is_filled_) {
-        emplace(*other.ptr());
-        is_filled_ = true;
-    }
-}
-Optional(Optional&& other) {
-    if(other.is_filled_) {
-        emplace(*other.ptr());
-        is_filled_ = true;
-    }
-}
-~Optional() {
-    reset();
-}
-Optional& operator=(const Optional& other) {
-    if(other == *this) {
-        return *this;
-    }
-    if(other.is_filled_) {
-        emplace(*other.ptr());
-        is_filled_ = true;
-    }
-    return *this;
-}
-Optional& operator=(Optional&& other) {
-    if(other == *this) {
-        return *this;
-    }
-    if(other.is_filled_) {
-        emplace(*other.ptr());
-        is_filled_ = true;
-    }
-    return *this;
+~optional() {
+    delete data_;
 }
 \end{lstlisting}
 
-\subsubsection{Private API}
-\begin{lstlisting}
-auto ptr() -> T& {
-    return std::launder(reinterpret_cast<T>(storage_));
+\textbf{Accessors}: Same interface as the small specialisation, but presence is determined by a null check instead of a boolean flag.
+
+\begin{lstlisting}[language=cpp,caption={Large optional: accessors}]
+[[nodiscard]] auto has_value() const noexcept -> bool {
+    return data_ != nullptr;
 }
-auto ptr() const -> const T& {
-    return std::launder(reinterpret_cast<const T>(storage_));
+[[nodiscard]] operator bool() const noexcept {
+    return has_value();
 }
-auto storage() -> T* {
-    return storage_;
+[[nodiscard]] auto value() const -> const T& {
+    if(!data_) {
+        throw std::runtime_error("no value");
+    }
+    return *data_;
 }
-auto storage() const -> const T* {
-    return storage_;
+[[nodiscard]] auto operator*() const -> const T& {
+    return value();
 }
 \end{lstlisting}
 
@@ -1054,8 +1140,8 @@ A special type of Tree where every node has at most 2 children.
 \begin{lstlisting}
 struct BinaryTreeNode {
     int value{};
-    std::unique_ptr<std::unique_ptr<TreeNode>> left{};
-    std::unique_ptr<std::unique_ptr<TreeNode>> right{};
+    std::unique_ptr<BinaryTreeNode> left{};
+    std::unique_ptr<BinaryTreeNode> right{};
 };
 \end{lstlisting}
 
@@ -1112,11 +1198,187 @@ Suppose you want to efficiently pop the largest / smallest entry of a list, this
 \subsection{std::unordered\_map}
 Hashmap, you can use your own hashing function.
 
+\subsubsection{Open Addressing Hash Map Implementation}
+An open addressing hash map stores all entries directly in the backing array (no linked lists). On collision, we probe forward (linear probing) until we find an empty slot. The capacity is always a power of two so we can replace modulo with a bitmask.
+
+Each slot has metadata tracking its state: \textbf{empty} (never used), \textbf{filled} (holds a live key-value pair), or \textbf{tombstone} (was filled, then erased). Tombstones are necessary because linear probing relies on the invariant that a probe chain is contiguous; if we cleared a slot to empty on erase, a later lookup could stop too early and miss entries that were inserted after the erased one. A tombstone says ``keep probing, something was here.'' Tombstones are skipped during lookup but can be overwritten during insert. They are cleaned up on rehash (only filled entries are re-inserted).
+
+The map rehashes when the load factor exceeds 50\% to keep probe chains short.
+
+\begin{lstlisting}[language=cpp,caption={OpenAddressingHashMap skeleton}]
+enum class ESlotMetadata : u8 {
+    empty = 0,
+    filled = 1,
+    tombstone = 2
+};
+
+template <Hashable Key, typename Value>
+class OpenAddressingHashMap
+{
+public:
+    using SizeT = std::uint32_t;
+
+    OpenAddressingHashMap();
+
+    auto insert(const Key& key, const Value& value) -> void;
+    auto erase(const Key& key) -> bool;
+    auto get(const Key& key) -> Value&;
+    auto get(const Key& key) const -> const Value&;
+    auto contains(const Key& key) const -> bool;
+    auto get_size() const -> SizeT;
+    auto get_capacity() const -> usize;
+private:
+    static constexpr usize k_initial_capacity = 16zu;
+
+    std::vector<Value> data_;
+    std::vector<ESlotMetadata> metadata_;
+    std::vector<Key> keys_;
+    SizeT num_elements_{0};
+
+    static constexpr SizeT k_max_size =
+        std::numeric_limits<SizeT>::max() / 2;
+
+    auto mask() const noexcept -> SizeT;
+    auto filled_with_key(const Key& key, SizeT idx) const noexcept -> bool;
+    auto insert_no_resize(const Key& key, const Value& value) -> void;
+    auto resize_and_rehash() -> void;
+};
+\end{lstlisting}
+
+The constructor allocates the initial capacity and marks all slots as empty. Three parallel vectors hold values, keys, and metadata separately (structure-of-arrays layout).
+
+\begin{lstlisting}[language=cpp,caption={Constructor}]
+OpenAddressingHashMap()
+{
+    data_.resize(k_initial_capacity);
+    keys_.resize(k_initial_capacity);
+    metadata_.assign(k_initial_capacity, ESlotMetadata::empty);
+}
+\end{lstlisting}
+
+\textbf{\texttt{mask()}}: Since capacity is always a power of two ($2^k$), the bit pattern is \texttt{100...00}. Subtracting 1 gives \texttt{011...11}; bitwise AND with this is equivalent to modulo but avoids the expensive division.
+
+\begin{lstlisting}[language=cpp,caption={Bitmask index and key check}]
+auto mask() const noexcept -> SizeT
+{
+    // (a % 2^k) == a & (2^k - 1)
+    return static_cast<SizeT>(get_capacity() - 1);
+}
+
+auto filled_with_key(const Key& key, SizeT idx) const noexcept -> bool
+{
+    return metadata_[idx & mask()] == ESlotMetadata::filled
+        && keys_[idx & mask()] == key;
+}
+\end{lstlisting}
+
+\textbf{\texttt{insert}}: Checks load factor first and rehashes if above 50\%. Then delegates to \texttt{insert\_no\_resize} which probes forward, skipping filled slots with different keys (but stopping on a match to overwrite). Tombstones are implicitly overwritten since the loop only continues on \texttt{filled} slots with non-matching keys.
+
+\begin{lstlisting}[language=cpp,caption={insert and insert\_no\_resize}]
+auto insert(const Key& key, const Value& value) -> void
+{
+    if (num_elements_ + 1 > data_.size() / 2) {
+        resize_and_rehash();
+    }
+    insert_no_resize(key, value);
+}
+
+auto insert_no_resize(const Key& key, const Value& value) -> void
+{
+    auto idx = static_cast<SizeT>(std::hash<Key>{}(key));
+    while (metadata_[idx & mask()] == ESlotMetadata::filled
+           && keys_[idx & mask()] != key) {
+        ++idx;
+    }
+    const auto was_already_filled = filled_with_key(key, idx);
+    metadata_[idx & mask()] = ESlotMetadata::filled;
+    data_[idx & mask()] = value;
+    keys_[idx & mask()] = key;
+    if (!was_already_filled) {
+        ++num_elements_;
+    }
+}
+\end{lstlisting}
+
+\textbf{\texttt{erase}}: Probes forward from the hash index. If we find the key, we mark the slot as a tombstone (not empty) and decrement the count. Returning \texttt{false} if we hit an empty slot means the key was never inserted.
+
+\begin{lstlisting}[language=cpp,caption={erase}]
+auto erase(const Key& key) -> bool
+{
+    auto idx = static_cast<SizeT>(std::hash<Key>{}(key));
+    while (metadata_[idx & mask()] != ESlotMetadata::empty) {
+        if (filled_with_key(key, idx)) {
+            metadata_[idx & mask()] = ESlotMetadata::tombstone;
+            --num_elements_;
+            return true;
+        }
+        ++idx;
+    }
+    return false;
+}
+\end{lstlisting}
+
+\textbf{\texttt{get} and \texttt{contains}}: Same probe loop. \texttt{get} throws on miss; \texttt{contains} returns a bool.
+
+\begin{lstlisting}[language=cpp,caption={get and contains}]
+auto get(const Key& key) -> Value&
+{
+    auto idx = static_cast<SizeT>(std::hash<Key>{}(key));
+    while (metadata_[idx & mask()] != ESlotMetadata::empty) {
+        if (filled_with_key(key, idx)) {
+            return data_[idx & mask()];
+        }
+        ++idx;
+    }
+    throw std::out_of_range("Key does not exist");
+}
+
+auto contains(const Key& key) const -> bool
+{
+    auto idx = static_cast<SizeT>(std::hash<Key>{}(key));
+    while (metadata_[idx & mask()] != ESlotMetadata::empty) {
+        if (filled_with_key(key, idx)) {
+            return true;
+        }
+        ++idx;
+    }
+    return false;
+}
+\end{lstlisting}
+
+\textbf{\texttt{resize\_and\_rehash}}: Doubles the capacity. Copies the old data, resets all metadata to empty, then re-inserts only \texttt{filled} entries (tombstones are discarded, cleaning up the table).
+
+\begin{lstlisting}[language=cpp,caption={resize\_and\_rehash}]
+auto resize_and_rehash() -> void
+{
+    if (data_.size() >= k_max_size) {
+        throw std::runtime_error("Max Size overflow");
+    }
+    const auto old_size = data_.size();
+    const auto new_size = 2 * old_size;
+
+    const auto data_old = data_;
+    const auto keys_old = keys_;
+    const auto metadata_old = metadata_;
+
+    data_.resize(new_size);
+    keys_.resize(new_size);
+    metadata_.assign(new_size, ESlotMetadata::empty);
+    num_elements_ = SizeT{0};
+
+    for (usize i{0zu}; i < old_size; ++i) {
+        if (metadata_old[i] == ESlotMetadata::filled) {
+            insert_no_resize(keys_old[i], data_old[i]);
+        }
+    }
+}
+\end{lstlisting}
+
 \subsection{Binary Search Tree (BST), Binary Search}
 A BST is a binary tree which satisfies the property that each node is greater or equal to all nodes in its left subtree and less than all nodes in its right subtree. It allows efficient searching for elements. 
 
 \subsection{Red-Black Tree}
-A self-balancnig BST.
+A self-balancing BST.
 
 \subsection{std::map}
 This stores the keys as a (balanced) binary search tree (more specifically as a red-black tree).
@@ -1333,14 +1595,90 @@ Items (1)--(3) follow immediately: when $n \ge k$, $H$ contains exactly the $k$ 
 and the minimum of these is the $k$-th largest overall.
 \qed
 
-\subsubsection{Debug Macro}
-You can use macros to quickly print out the names value of expressions with the following macro. Note that you should always output to \texttt{std::cerr} (I think \texttt{std::clog}) as \texttt{std::cout} is used to evaluate the result.
-\begin{lstlisting}
-#define DS_DBG(x) std::cerr << #x << " = " << (x) << '\n';
-#define DS_DBG2(x, y) std::cerr << #x << " = " << (x) << ", " << #y << " = " << (y) << '\n';
+\subsubsection{Power-of-Two Division and Modulo via Bit Tricks}
+When the divisor is a power of two $s = 2^k$, division and modulo can be replaced by bit shifts and masks:
+\[
+    \texttt{x / s} \equiv \texttt{x >> k}, \qquad \texttt{x \% s} \equiv \texttt{x \& (s - 1)}.
+\]
+The key insight is that $s$ has exactly one set bit, so \texttt{std::countr\_zero(s)} gives $k = \log_2(s)$ by counting trailing zeros. For example \texttt{countr\_zero(8)} $= 3$ because $8 = \texttt{0b1000}$.
 
-#define DS_DBG_t1(x) std::cerr << "\t" << #x << " = " << (x) << '\n';
-#define DS_DBG_t2(x) std::cerr << "\t\t" << #x << " = " << (x) << '\n';
+The mask trick (\texttt{\& (s - 1)}) is used in the \texttt{OpenAddressingHashMap} to replace modulo for bucket indexing. The shift trick is useful when you need the quotient, for example to bin values into fixed-width buckets:
+
+\begin{lstlisting}[language=cpp,caption={Power-of-two histogram bucketing}]
+struct Bucket {
+    int Start{};
+    int End{};
+    int Count{};
+};
+
+class Histogram
+{
+public:
+    Histogram(usize count, usize size)
+        : count_(count), size_(size) {}
+
+    auto Build(const std::vector<int>& latencies) -> std::vector<Bucket>
+    {
+        const auto count_i = static_cast<int>(count_);
+        const auto size_i = static_cast<int>(size_);
+        const auto shift = std::countr_zero(size_); // log2(size_)
+
+        std::vector<Bucket> buckets;
+        buckets.reserve(count_ + 1);
+        for(int i{0}; i < count_i; ++i) {
+            buckets.emplace_back(i * size_i, (i + 1) * size_i, 0);
+        }
+        buckets.emplace_back(
+            count_i * size_i, std::numeric_limits<int>::max(), 0);
+
+        for(const auto latency : latencies) {
+            // latency / size_ via right shift
+            const auto idx = static_cast<usize>(latency) >> shift;
+            ++buckets[std::min(idx, count_)].Count;
+        }
+        return buckets;
+    }
+private:
+    usize count_;
+    usize size_; // must be a power of two
+};
+\end{lstlisting}
+
+Be careful with signed integers and bitwise shifts; cast to unsigned first. For non-power-of-two divisors the compiler will optimise the division anyway, so these tricks are mainly useful when the power-of-two property is a runtime invariant that the compiler cannot prove.
+
+\subsubsection{Debug Macro}
+You can use macros to quickly print out the names and values of expressions. Note that you should always output to \texttt{std::cerr} (I think \texttt{std::clog} can also be used but \texttt{std::cerr} is safer) as \texttt{std::cout} is used to evaluate the result. A compile-time toggle allows disabling all debug output without removing the macro calls.
+
+\begin{lstlisting}
+constexpr bool k_do_print{true};
+
+#define DS_DBG(x) if constexpr (k_do_print) \
+    std::cerr << #x << " = " << (x) << '\n';
+#define DS_DBG2(x, y) if constexpr (k_do_print) \
+    std::cerr << #x << " = " << (x) << ", " << #y << " = " << (y) << '\n';
+
+#define DS_DBG_t1(x) if constexpr (k_do_print) \
+    std::cerr << "\t" << #x << " = " << (x) << '\n';
+#define DS_DBG_t2(x) if constexpr (k_do_print) \
+    std::cerr << "\t\t" << #x << " = " << (x) << '\n';
+\end{lstlisting}
+
+For printing vectors a helper function is useful. The array macro uses the same \texttt{k\_do\_print} toggle.
+
+\begin{lstlisting}
+template <typename T>
+auto print(const std::vector<T>& xs, std::string_view name) -> void {
+    std::cerr << name << " = [";
+    for(usize i{0zu}; i < xs.size(); ++i) {
+        if(i > 0) {
+            std::cerr << ", ";
+        }
+        std::cerr << xs[i];
+    }
+    std::cerr << "]\n";
+}
+
+#define DS_DBG_ARR(xs) if constexpr (k_do_print) print((xs), #xs);
 \end{lstlisting}
 \subsubsection{Rolling Average}
 \[
@@ -1495,7 +1833,7 @@ Given an array of numbers you want to find the length of the longest increasing 
 \begin{lstlisting}
 auto longest_increasing_subsequence(const std::vector<int>& xs) -> int {
     std::vector<int> tails(xs.size());
-    for(const x : xs) {
+    for(const auto x : xs) {
         auto it = std::lower_bound(tails.begin(), tails.end(), x);
 
         if(it == tails.end()) {
@@ -1550,8 +1888,8 @@ private:
     }
 
     auto helper(int m, int n) -> int {
+        if(m == m_ - 1 && n == n_ - 1) return 1;
         if(m >= m_ || n >= n_) return 0;
-        if(m == m_ && n == n_) return 1;
 
         const auto idx = get(m, n);
         if(memo_[idx] == k_not_init) {
@@ -1581,7 +1919,7 @@ auto merge2(ListNode* a, ListNode* b) -> ListNode* {
         tail = tail->next;
     }
     tail->next = a ? a : b;
-    return dummy;
+    return dummy.next;
 }
 \end{lstlisting}
 \begin{figure}[H]
@@ -1607,7 +1945,7 @@ auto mergeK(std::vector<ListNode*> lists) -> ListNode* {
     return curr;
 }
 \end{lstlisting}
-If the lists don't alias then this is embarassingly parallel, can just do a type of tree reduce on the individual combinations.
+If the lists don't alias then this is embarrassingly parallel, can just do a type of tree reduce on the individual combinations.
 
 \subsubsection{Rotting Fruit}
 \begin{lstlisting}
@@ -1698,7 +2036,7 @@ auto graph_deep_copy(OldNode* node) -> Node* {
 \subsubsection{Maximum Subarray}
 Let \texttt{nums} be an array of integers, a subarray is a contiguous non-empty sequence of elements in that array. We are interested in finding the largest subarray.
 
-The solution to this is known Kadane's algorithm, we greedily decide in each step if we should start a ne w subarray or extend the current one. There is never a reason to backtrack.
+The solution to this is known as Kadane's algorithm, we greedily decide in each step if we should start a new subarray or extend the current one. There is never a reason to backtrack.
 \begin{lstlisting}
 auto best_sum = std::numeric_limits<int>::lowest();
 auto current_sum = 0;
@@ -1849,9 +2187,9 @@ while(true) {
     const auto A_right = (num_A == A.size()) ? long_max : get_rotated(A, pivot_A, num_A);
 
     const auto B_left  = (num_B == 0)        ? long_min : get_rotated(B, pivot_B, num_B - 1);
-    const auto B_right = (num_B == A.size()) ? long_max : get_rotated(B, pivot_B, num_B);
+    const auto B_right = (num_B == B.size()) ? long_max : get_rotated(B, pivot_B, num_B);
 
-    if(A_left <= B_right && B_left && A_right) { // Partition is Valid
+    if(A_left <= B_right && B_left <= A_right) { // Partition is Valid
         return std::max(A_left, B_left);
     }
 
@@ -1859,7 +2197,7 @@ while(true) {
         num_A_max = num_A - 1;
     } else {
         assert(B_left > A_right);
-        num_B_max = num_A + 1;
+        num_A_min = num_A + 1;
     }
 }
 \end{lstlisting}
@@ -1931,7 +2269,7 @@ private:
 \subsubsection{Subarrays with Given Sum and Bounded Maximum}
 Suppose we are given an array \texttt{nums} with \texttt{n} elements and we are interested in counting the number of contiguous subarrays which sum to some \texttt{k} and whose elements are at most \texttt{M}.
 
-First we note that whenever we see a value \texttt{x > M} we have a cut, so we can see this problem as summing up the number of contiguous subarrays per block, where blocks are seperated by too large values. For example suppose
+First we note that whenever we see a value \texttt{x > M} we have a cut, so we can see this problem as summing up the number of contiguous subarrays per block, where blocks are separated by too large values. For example suppose
 \[
 \texttt{nums = [-1, 2, 1, 7, -1, 5, 2, 1, 2, -7]},
 \]
@@ -1942,27 +2280,27 @@ First we note that whenever we see a value \texttt{x > M} we have a cut, so we c
                      ^ {-1}
                                   ^ {2, 1, 2, -7} 
 \end{lstlisting}
-and \texttt{F(nums, k, M) = f({-1, 2, 1}, k) + f({-1}, k) + f{2, 1, 2, -7}, k} where \texttt{F} denotes the main entry point and \texttt{f} the counts per block.
+and \texttt{F(nums, k, M) = f({-1, 2, 1}, k) + f({-1}, k) + f({2, 1, 2, -7}, k)} where \texttt{F} denotes the main entry point and \texttt{f} the counts per block.
 
-Let \texttt{pref(x)} for an array \texttt{x = \{x1, x2, x3, ...\}} be defined as the cummulative sum
+Let \texttt{pref(x)} for an array \texttt{x = \{x1, x2, x3, ...\}} be defined as the cumulative sum
 $$
 \texttt{pref(x) = \{x1, x1 + x2, x1 + x2 + x3, ...\}}.
 $$
 We can then efficiently evaluate the total sum of a subarray \texttt{[xi, ..., xk]} by computing
 $$
-\texttt{pref(x)[k] - perf(x)[i - 1]}
+\texttt{pref(x)[k] - pref(x)[i - 1]}
 $$
 (of course you cache and don't recompute it every time). The big speedup improvement comes from inserting target values into a hash map and summing up the counts while having a single running total instead of storing the prefix array.
 \begin{lstlisting}
 ++counts[pref - k];
 out += counts[pref];
 \end{lstlisting}
-To avoid unncessary insertions by using \texttt{[]} we use \texttt{.find} and obtain the following per-block logic:
+To avoid unnecessary insertions by using \texttt{[]} we use \texttt{.find} and obtain the following per-block logic:
 \begin{lstlisting}
-if(auto it = counts.find(perf - k); it != counts.end()) {
+if(auto it = counts.find(pref - k); it != counts.end()) {
     out += it->second;
 }
-++counts[perf];
+++counts[pref];
 \end{lstlisting}
 A block ends when a value is \texttt{> M} so we get the following total solution
 \begin{lstlisting}
@@ -1974,10 +2312,10 @@ for(auto i = 0zu; i < nums.size(); ++i) {
         pref = 0ll;
         continue;
     }
-    if(auto it = counts.find(perf - k); it != counts.end()) {
+    if(auto it = counts.find(pref - k); it != counts.end()) {
         out += it->second;
     }
-    ++counts[perf];
+    ++counts[pref];
 }
 return out;
 \end{lstlisting}
@@ -1993,9 +2331,9 @@ struct TaskT {
     ProfitT profit;
 };
 template <typename DeadlineT, typename ProfitT>
-auto collect_tasks(const std::vector<DeadlineT>& deadlines, const std::vector<ProfitT>& profits) -> TaskT<DeadLineT, ProfitT> {
+auto collect_tasks(const std::vector<DeadlineT>& deadlines, const std::vector<ProfitT>& profits) -> std::vector<TaskT<DeadlineT, ProfitT>> {
     assert(deadlines.size() == profits.size());
-    std::vector<Task> out;
+    std::vector<TaskT<DeadlineT, ProfitT>> out;
     out.reserve(deadlines.size());
     for(auto i = 0zu; i < deadlines.size(); ++i) {
         out.emplace_back(deadlines[i], profits[i]);
@@ -2068,16 +2406,40 @@ Attributes of tests to focus on:
     \item[Repeatable] You get the same answer every time.
     \item[Replicable] Your colleagues get the same answer as you do.
     \item[Accuracy] Measurements are "right".
-    \item[Precision] Measurements are "informativ".
+    \item[Precision] Measurements are "informative".
 \end{itemize}
 
 \subsection{Design Patterns}
 \subsubsection{Visitor Pattern}
-In C++ this can be implemented efficiently (no runtime overhead) by using \texttt{std::Variant} and \texttt{std::visit}.
+In C++ this can be implemented efficiently (no runtime overhead) by using \texttt{std::variant} and \texttt{std::visit}.
 
 \subsubsection{Strategy Pattern}
 
 \subsubsection{CRTP (Curiously Recurring Template Pattern) Design Pattern}
+CRTP achieves static (compile-time) polymorphism by having a base class templated on the derived class. The base can call derived-class methods via \texttt{static\_cast<const Derived*>(this)}, resolving the call at compile time with zero runtime overhead (no vtable, no indirection). Compare with the equivalent runtime polymorphism using \texttt{virtual}:
+
+\begin{lstlisting}[language=cpp,caption={Runtime polymorphism (virtual)}]
+struct Elf {
+    virtual std::string_view Name() const = 0;
+};
+struct ArcherElf : Elf {
+    std::string_view Name() const override { return "Legolas"; }
+};
+\end{lstlisting}
+
+\begin{lstlisting}[language=cpp,caption={CRTP: compile-time polymorphism}]
+template <typename Derived>
+struct Elf {
+    [[nodiscard]] auto Name() const -> std::string_view {
+        return static_cast<const Derived*>(this)->Name();
+    }
+};
+struct ArcherElf : Elf<ArcherElf> {
+    std::string_view Name() const { return "Legolas"; }
+};
+\end{lstlisting}
+
+The trade-off is that CRTP requires the concrete type to be known at compile time (no heterogeneous containers of \texttt{Elf*}), but eliminates the vtable pointer per object and enables inlining.
 
 \subsubsection{Type Erasure Design Pattern}
 
@@ -2132,24 +2494,24 @@ struct Packed {
     int b{};
 };
 
-struct Seperated {
+struct Separated {
     alignas(k_cacheline_size) int a{};
     alignas(k_cacheline_size) int b{};
 };
 
-auto func_a(auto& Packed p) -> void {
+auto func_a(Packed& p) -> void {
     p.a = p.a + 1; // invalidates cache line that Packed lives on
 }
 
-auto func_b(auto& Packed p) -> void {
+auto func_b(Packed& p) -> void {
     p.b = p.b + 1; // invalidates cache line that Packed lives on
 }
 
-auto func_a_seperated(auto& Seperated p) -> void {
+auto func_a_separated(Separated& p) -> void {
     p.a = p.a + 1; // Doesn't invalidate cacheline
 }
 
-auto func_b_seperated(auto& Seperated p) -> void {
+auto func_b_separated(Separated& p) -> void {
     p.b = p.b + 1; // Doesn't invalidate cacheline
 }
 
@@ -2218,8 +2580,8 @@ TransformSOA {
 and now we can load in three \texttt{CacheLine} to update 8 elements at a time, so we have 3 cache misses per 16 updates in the worst case. The pointers can for example store to a ArenaAllocator or some other contiguous storage like \texttt{std::vector} or \texttt{std::pmr::vector}). The update code becomes (assuming number of entities is divisible by 8 to avoid having to deal with boundary behavior)
 \begin{lstlisting}
 const auto shift_x = 1.0f;
-const auto shift_x = 1.0f;
-const auto shift_x = 1.0f;
+const auto shift_y = 1.0f;
+const auto shift_z = 1.0f;
 for(auto i = 0zu; i < n_entities; ++i) {
     pos_xs[i] += shift_x;
     pos_ys[i] += shift_y;
@@ -2777,7 +3139,7 @@ auto Work() -> void
     \caption{Virtual address translation: virtual page number + offset mapped to a physical frame number + offset}
     \label{fig:virtual-address-translation}
 \end{figure}
-Paging as opposed to segmentation slices up the availiable virtual memory into fixed-size pieces.
+Paging as opposed to segmentation slices up the available virtual memory into fixed-size pieces.
 
 \newpage
 \section{Networking}
