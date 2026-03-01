@@ -2246,17 +2246,203 @@ struct TransformBlock {
 \subsubsection{Out-of-Order Execution}
 
 \subsection{GPU Architecture}
-\subsubsection{Thread Blocks}
-\subsubsection{Warps}
+
+\subsubsection{Streaming Multiprocessor (SM) and Warp Execution}
+The SM is the fundamental compute unit of a GPU. Each SM is partitioned into four \emph{processing blocks} (sub-partitions), each containing:
+
+\begin{itemize}
+    \item One \textbf{warp scheduler} with one dispatch unit (one instruction per cycle from the selected warp).
+    \item A slice of the \textbf{register file} (\num{16384} 32-bit registers per block, \num{65536} per SM on A100).
+    \item \textbf{Execution units:} 16 INT32 cores, 16 FP32 cores, 8 FP64 cores, and one tensor core.
+    \item \textbf{8 LD/ST units} and \textbf{4 SFUs} (Special Function Units for \texttt{sin}, \texttt{exp}, rsqrt, etc.).
+\end{itemize}
+
+The four processing blocks share the SM's L1 data cache and configurable shared memory (up to \SI{164}{\kilo\byte} on A100). Threads are grouped into \emph{warps} of 32, and each warp scheduler selects one resident warp per cycle. Because the four schedulers operate independently, an SM can have four instructions from four different warps in flight simultaneously; this is the primary mechanism for hiding memory and instruction latency.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{GA100Full}
+  \caption{GA100 floorplan: GPCs, L2 cache fabric, memory controllers, and NVLink/PCIe interfaces.}
+  \label{fig:ga100-full}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{SMBreakdown}
+  \caption{A100 SM internals. \textbf{Left:} four processing blocks sharing L1/shared memory. \textbf{Centre:} each block's warp scheduler, register file, execution units, LD/ST, SFUs. \textbf{Right:} per-block execution units (16 INT32, 16 FP32, 8 FP64, 1 tensor core).}
+  \label{fig:sm-breakdown}
+\end{figure}
+
+\subsubsection{GPU Memory Hierarchy}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.65\textwidth]{A100CacheHierarchy}
+  \caption{A100 memory hierarchy: registers, shared memory/L1, L2 cache, and HBM global memory.}
+  \label{fig:a100-cache-hierarchy}
+\end{figure}
+
+Where CPUs use deep cache hierarchies to hide latency, GPUs prioritise bandwidth and expose a shallower hierarchy:
+
+\begin{itemize}
+    \item \textbf{Registers:} single-cycle access, private per thread, scarcest on-chip resource (register count per kernel limits occupancy).
+    \item \textbf{Shared memory:} on-chip, visible to all threads in a block; primary mechanism for explicit data reuse and inter-thread communication. $\sim$\num{20} cycle latency.
+    \item \textbf{L2 cache:} shared across all SMs, transparently caches global memory traffic (\SI{40}{\mega\byte} on A100). $\sim$\num{200} cycle latency.
+    \item \textbf{HBM (global memory):} bulk storage. A100-SXM4-40GB provides \SI{40}{\giga\byte} at $\sim$\SI{1555}{\giga\byte\per\second} peak bandwidth. $\sim$\num{500} cycle latency.
+\end{itemize}
+
 \subsubsection{Memory Coalescing}
+When a warp executes a load/store, the hardware combines 32 individual thread addresses into as few 128-byte cache line transactions as possible. If consecutive threads access consecutive addresses (\texttt{base + i}), accesses are \emph{coalesced}. Strided or scattered patterns require multiple transactions, wasting bandwidth.
+
+\begin{lstlisting}[language=CUDA,caption={Coalesced vs non-coalesced access}]
+// Coalesced: consecutive threads read adjacent elements
+float val = matrix[row * N + threadIdx.x];
+
+// Non-coalesced: stride-N access
+float val = matrix[threadIdx.x * N + col];
+\end{lstlisting}
+
+\subsubsection{Shared Memory Bank Conflicts}
+Shared memory is divided into 32 banks (4 bytes wide, round-robin). When multiple warp threads access different words in the same bank, accesses serialise. Common fix: pad the leading dimension by one so stride is coprime to 32.
+
+\begin{lstlisting}[language=CUDA,caption={Bank conflict and the padding fix}]
+__shared__ float tile[32][32];  // 32-way bank conflict on column access
+__shared__ float tile[32][33];  // stride=33, conflicts eliminated
+\end{lstlisting}
+
+\subsection{CUDA Programming Model}
+CUDA organises parallel execution into three levels: \emph{grids}, \emph{thread blocks}, and \emph{threads}. A kernel launch creates one grid partitioned into blocks. Each block runs on one SM with access to shared memory and synchronisation barriers. Threads in different blocks cannot synchronise during kernel execution.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{GridBlockThreadAddressing}
+  \caption{CUDA execution hierarchy: grids, thread blocks, and threads with built-in addressing variables.}
+  \label{fig:cuda-thread-hierarchy}
+\end{figure}
+
+\subsubsection{Kernel Syntax and Launch Configuration}
+A kernel is declared with \lstinline[language=CUDA]{__global__} and launched with triple-chevron syntax:
+
+\begin{lstlisting}[language=CUDA,caption={Vector addition kernel}]
+__global__ void vecAdd(const float *a, const float *b, float *c, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n) c[i] = a[i] + b[i];
+}
+
+int threadsPerBlock = 256;
+int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock;
+vecAdd<<<blocksPerGrid, threadsPerBlock>>>(d_a, d_b, d_c, n);
+\end{lstlisting}
+
+\subsubsection{2D Grid Addressing}
+\begin{lstlisting}[language=CUDA,caption={Matrix transpose with 2D grid}]
+__global__ void transpose(const float *in, float *out, int M, int N) {
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    if (row < M && col < N)
+        out[col * M + row] = in[row * N + col];
+}
+
+dim3 block(16, 16);
+dim3 grid((N + 15) / 16, (M + 15) / 16);
+transpose<<<grid, block>>>(d_in, d_out, M, N);
+\end{lstlisting}
+
+\subsubsection{Block Size Selection}
+Upper limit: 1024 threads per block. Practical considerations:
+
+\begin{itemize}
+    \item \textbf{Warp granularity:} block size should be a multiple of 32 (warp size) to avoid partially filled warps.
+    \item \textbf{Occupancy:} each SM has finite registers, shared memory, and max \num{2048} resident threads. High per-thread register usage reduces resident warps.
+    \item \textbf{Shared memory per block:} large allocations limit the number of co-resident blocks.
+\end{itemize}
+
+Common defaults: 128 or 256 threads. Performance-critical kernels tune empirically or use \lstinline[language=CUDA]{__launch_bounds__}.
+
+\subsubsection{Shared Memory and Synchronisation}
+Shared memory is on-chip, programmer-managed, visible to all threads in a block. Two allocation modes:
+
+\begin{lstlisting}[language=CUDA,caption={Static vs dynamic shared memory}]
+__shared__ float tile[TILE_SIZE][TILE_SIZE];         // static
+
+extern __shared__ float smem[];                       // dynamic
+kernel<<<grid, block, sharedBytes>>>(args);
+\end{lstlisting}
+
+\subsubsection{Tiled Matrix Multiplication}
+The canonical shared memory pattern. Loads input tiles cooperatively, computes partial dot products, advances to next tile. Each loaded element is reused by all threads in its row/column, raising arithmetic intensity by the tile size factor.
+
+\begin{lstlisting}[language=CUDA,caption={Tiled matrix multiplication}]
+#define TILE 16
+__global__ void matmul(const float *A, const float *B, float *C,
+                       int M, int N, int K) {
+    __shared__ float As[TILE][TILE], Bs[TILE][TILE];
+    int row = blockIdx.y * TILE + threadIdx.y;
+    int col = blockIdx.x * TILE + threadIdx.x;
+    float sum = 0.0f;
+
+    for (int t = 0; t < (K + TILE - 1) / TILE; t++) {
+        int aCol = t * TILE + threadIdx.x;
+        int bRow = t * TILE + threadIdx.y;
+        As[threadIdx.y][threadIdx.x] = (row < M && aCol < K)
+                                       ? A[row * K + aCol] : 0.0f;
+        Bs[threadIdx.y][threadIdx.x] = (bRow < K && col < N)
+                                       ? B[bRow * N + col] : 0.0f;
+        __syncthreads();
+        for (int k = 0; k < TILE; k++)
+            sum += As[threadIdx.y][k] * Bs[k][threadIdx.x];
+        __syncthreads();
+    }
+    if (row < M && col < N) C[row * N + col] = sum;
+}
+\end{lstlisting}
+
+For tile size $T$: global loads per output element drop from $2K$ to $2K/T$, and arithmetic intensity increases by factor $T$.
 
 \subsection{CPU--GPU Interaction}
+\subsubsection{Kernel Launch Pipeline}
+A kernel launch goes through: (1) argument marshalling, (2) command enqueueing into the stream (host returns immediately), (3) driver serialisation to the GPU command buffer, (4) block distribution by the GigaThread engine to SMs with sufficient resources, (5) warp execution. Steps 1--4 cost $\sim$5--10 $\mu$s per launch on A100. For small kernels, launch overhead can dominate; the standard mitigation is \emph{kernel fusion}.
+
 \subsubsection{Asynchronous Execution}
-\subsubsection{Synchronization Primitives}
+\begin{lstlisting}[language=CUDA,caption={Async pattern with streams and events}]
+cudaStream_t s1, s2;
+cudaEvent_t done1;
+cudaStreamCreate(&s1); cudaStreamCreate(&s2);
+cudaEventCreate(&done1);
+
+cudaMemcpyAsync(d_in, h_in, bytes, cudaMemcpyHostToDevice, s1);
+kernel1<<<grid1, block1, 0, s1>>>(d_in, d_tmp);
+cudaEventRecord(done1, s1);
+
+foo();  // host CPU work overlaps queued device work
+
+cudaStreamWaitEvent(s2, done1, 0);
+kernel2<<<grid2, block2, 0, s2>>>(d_tmp, d_out);
+cudaMemcpyAsync(h_out, d_out, bytes, cudaMemcpyDeviceToHost, s2);
+cudaStreamSynchronize(s2);
+\end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.96\textwidth]{MemcpyAsync}
+  \caption{Asynchronous host--device timeline: host work overlaps queued device work until explicit synchronisation.}
+  \label{fig:memcpy-async}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.96\textwidth]{MemcpySync}
+  \caption{Synchronous timeline using blocking \texttt{cudaMemcpy}: host stalled during transfers.}
+  \label{fig:memcpy-sync}
+\end{figure}
+
+For true async host-device copies, host buffers must be page-locked (pinned) via \texttt{cudaMallocHost}.
 
 \subsection{Benchmarking and Measurement}
 \subsubsection{Sampling Benchmarks}
 \subsubsection{Cache and Memory Profiling (perf, Valgrind)}
+\subsubsection{Nsight Compute (GPU Profiling)}
+NVIDIA Nsight Compute collects hardware performance counters per kernel. Key metrics: achieved occupancy, memory throughput per hierarchy level, compute throughput, warp stall reasons, shared memory bank conflicts, and L2 hit rate.
 
 \newpage
 \section{Concurrency}
@@ -2293,6 +2479,61 @@ The fundamental pattern is the \textbf{acquire--release pair}: a store with \tex
 \begin{lstlisting}[language=cpp,caption={std::this\_thread utilities}]
 std::this_thread::yield();                                  // hint: give up time slice
 std::this_thread::sleep_for(std::chrono::milliseconds(10)); // sleep >= 10ms
+\end{lstlisting}
+
+\subsection{Mutexes and Locks}
+\subsubsection{Mutex Types}
+\texttt{std::mutex} (C++11) is the basic exclusive-ownership mutex. \texttt{std::timed\_mutex} adds \texttt{try\_lock\_for}/\texttt{try\_lock\_until}. \texttt{std::recursive\_mutex} allows the same thread to lock multiple times (must unlock the same number of times). \texttt{std::shared\_mutex} (C++17) supports shared (read) and exclusive (write) ownership for reader-writer patterns.
+
+\subsubsection{Lock Types}
+\begin{itemize}
+    \item \texttt{std::lock\_guard<Mutex>} (C++11): simplest RAII lock. Locks on construction, unlocks on destruction. No manual lock/unlock after creation. Superseded by \texttt{scoped\_lock} in C++17.
+    \item \texttt{std::unique\_lock<Mutex>} (C++11): more flexible. Supports deferred locking (\texttt{std::defer\_lock}), timed locking, manual \texttt{lock()}/\texttt{unlock()}, and is \emph{required} by \texttt{std::condition\_variable::wait()}.
+    \item \texttt{std::scoped\_lock<Mutexes...>} (C++17): preferred default. Can lock \emph{multiple} mutexes simultaneously with deadlock avoidance (uses \texttt{std::lock} internally). Non-movable, non-copyable.
+    \item \texttt{std::shared\_lock<SharedMutex>} (C++17): acquires shared (read) ownership. Multiple threads can hold a shared lock concurrently; exclusive locks block until all shared locks are released.
+\end{itemize}
+
+\begin{lstlisting}[language=cpp,caption={Lock types comparison}]
+std::mutex m;
+
+{ std::lock_guard<std::mutex> lg{m}; }       // C++11, single mutex
+{ std::scoped_lock sl{m}; }                  // C++17, preferred replacement
+
+std::mutex m1, m2;
+{ std::scoped_lock sl{m1, m2}; }             // C++17, multiple mutexes
+
+// C++11 equivalent for multiple mutexes:
+std::lock(m1, m2);                            // lock both, deadlock-free
+std::lock_guard lg1{m1, std::adopt_lock};
+std::lock_guard lg2{m2, std::adopt_lock};
+
+// unique_lock with deferred locking (required for condition variables)
+std::unique_lock ulk{m, std::defer_lock};
+ulk.lock();    // lock manually
+ulk.unlock();  // unlock manually before destruction
+\end{lstlisting}
+
+\subsubsection{Condition Variables}
+\texttt{std::condition\_variable} allows threads to block until notified. Always use with a predicate to guard against \emph{spurious wakeups} (the OS can wake a waiting thread without a notification). Requires \texttt{std::unique\_lock} (not \texttt{lock\_guard} or \texttt{scoped\_lock}) because \texttt{wait()} must internally unlock the mutex while sleeping and re-lock before returning.
+
+\begin{lstlisting}[language=cpp,caption={Condition variable pattern}]
+std::mutex m;
+std::condition_variable cv;
+bool ready = false;
+
+// Consumer
+{
+    std::unique_lock ulk{m};
+    cv.wait(ulk, [&]{ return ready; }); // unlocks m, sleeps, re-locks on wake
+    // ready == true here, m is locked
+}
+
+// Producer
+{
+    std::scoped_lock sl{m};
+    ready = true;
+}
+cv.notify_one(); // or cv.notify_all()
 \end{lstlisting}
 
 \subsection{Multiple Threads}
@@ -2583,6 +2824,10 @@ floating-point expressions using 80-bit x87 registers, which could lead to resul
     Glenford J. Myers,
     \emph{The Art of Software Testing}.
     Wiley, 1979.
+
+    \item \label{ref:staples-mutexes}
+    Gabriel Staples, \emph{C++ Mutexes and Locks}.\\
+    \url{https://gabrielstaples.com/cpp-mutexes-and-locks/}
 \end{itemize}
 
 \end{document}
